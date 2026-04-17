@@ -1,0 +1,8 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="House Bug logo option C">
+  <rect x="12" y="12" width="104" height="104" rx="26" fill="#000"/>
+  <path d="M64 32L36 54V96H92V54L64 32Z" fill="#fff"/>
+  <rect x="44" y="56" width="40" height="36" rx="18" fill="#000"/>
+  <rect x="61" y="60" width="6" height="28" rx="3" fill="#fff"/>
+  <circle cx="54" cy="52" r="3" fill="#000"/>
+  <circle cx="74" cy="52" r="3" fill="#000"/>
+</svg>

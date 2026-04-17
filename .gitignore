@@ -1,0 +1,54 @@
+# Node.js
+node_modules/
+.npm
+npm-debug.log*
+
+# Next.js
+.next/
+out/
+.vercel/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Build outputs
+dist/
+build/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.pem
+.cache/

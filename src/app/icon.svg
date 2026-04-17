@@ -1,0 +1,7 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HomeBug icon">
+  <path d="M64 12L16 46V116H112V46L64 12Z" fill="#000"/>
+  <rect x="42" y="48" width="44" height="50" rx="22" fill="#fff"/>
+  <rect x="61" y="52" width="6" height="42" rx="3" fill="#000"/>
+  <circle cx="52" cy="42" r="4" fill="#fff"/>
+  <circle cx="76" cy="42" r="4" fill="#fff"/>
+</svg>

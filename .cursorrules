@@ -1,0 +1,193 @@
+# HomeBug — Cursor AI 规则文件
+
+# 将此文件保存为项目根目录的 .cursorrules
+
+You are an expert full-stack developer helping to build HomeBug (小小虫), a household inventory management web app.
+
+## Project Overview
+
+HomeBug is a family item inventory manager with OCR photo recognition, expiry tracking, and reminder features.
+Deployed on Cloudflare Pages + Workers with D1 (SQLite) database.
+
+## Tech Stack
+
+- Framework: Next.js 15 (App Router)
+- UI: HeroUI v3 + Tailwind CSS v3
+- Runtime: Cloudflare Workers (edge runtime)
+- Database: Cloudflare D1 (SQLite via Drizzle ORM or raw queries)
+- Auth: JWT (jose library)
+- Animation: Framer Motion
+- Forms: React Hook Form + Zod
+- State: Zustand + SWR
+- Icons: Lucide React
+- Language: TypeScript (strict mode)
+
+## Code Style Rules
+
+### General
+
+- Always use TypeScript with strict types, never use `any`
+- Use `const` by default, `let` when reassignment is needed
+- Prefer async/await over promise chains
+- Export types and interfaces from dedicated `types/` files
+- Add JSDoc comments for all exported functions
+
+### Next.js App Router
+
+- Use Server Components by default, add `'use client'` only when needed
+- Keep page components thin — logic goes in hooks or lib files
+- API routes use the Route Handler pattern (`export async function GET(request: Request)`)
+- All API routes that require auth must call `withAuth(request)` first
+- Return consistent JSON shape: `{ data, error, meta? }`
+
+### Cloudflare Workers
+
+- Access D1 via `process.env.DB` or `getRequestContext().env.DB`
+- Never use Node.js-only APIs (fs, path, crypto) — use Web Crypto API
+- Use `context.waitUntil()` for background tasks
+
+### Database (D1 / SQLite)
+
+- Write raw SQL queries (no ORM) for better D1 compatibility
+- Always use parameterized queries to prevent SQL injection
+- Handle `null` values explicitly when parsing D1 results
+- Date fields stored as ISO string `YYYY-MM-DD`
+
+### Authentication
+
+- JWT stored in httpOnly cookie named `token`
+- Cookie options: `Secure; SameSite=Strict; Path=/; Max-Age=604800`
+- Public auth route is login-first mode (`POST /api/auth/login`)
+- First successful login bootstraps the first account as `admin`
+- Use `jose` library for JWT operations (edge-compatible)
+
+### React Components
+
+- One component per file, named with PascalCase
+- Use HeroUI components as the base, wrap/extend when needed
+- Never use inline styles — use Tailwind classes or CSS variables
+- All forms must use React Hook Form + Zod schema validation
+- Loading states must show a skeleton or spinner (never empty)
+- Error states must show a user-friendly message (never raw errors)
+
+### Styling
+
+- Follow the design tokens in `UI_DESIGN.md` strictly
+- Color palette is black/white/gray — avoid bright colors except for status badges
+- Dark mode: use `dark:` Tailwind prefix or CSS variable switching
+- Animations: subtle only — use defined durations (150ms/200ms/300ms)
+- Mobile-first: write base styles for mobile, override for `md:` and `lg:`
+
+### File Naming
+
+- Pages: `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`
+- Components: `PascalCase.tsx` (e.g., `ItemCard.tsx`)
+- Hooks: `useCamelCase.ts` (e.g., `useItems.ts`)
+- Utils: `camelCase.ts` (e.g., `dateUtils.ts`)
+- Types: `camelCase.ts` or `index.ts` in `types/`
+- API queries: `items.ts`, `users.ts` in `lib/db/queries/`
+
+### Error Handling
+
+- API routes: try/catch everything, return `{ error: string }` with proper HTTP status
+- Mutations: show toast notification on success/error (use HeroUI toast)
+- Form errors: display inline below each field using React Hook Form `errors` object
+- Network errors: show retry button where appropriate
+
+## Design Guidelines
+
+- Style: Minimal, black & white, Apple/Notion aesthetic
+- No gradients (except subtle gray ones for cards)
+- Rounded corners: sm(4px), md(8px), lg(12px), xl(16px) — be consistent
+- Card hover: `translateY(-2px)` + slightly deeper shadow, 200ms transition
+- Font: Inter (English) + PingFang SC / system-ui (Chinese)
+- Status colors: green=normal, amber=expiring soon, red=expired, gray=no expiry
+
+## OCR Flow
+
+When implementing the OCR capture component:
+
+1. Mobile: use `<input type="file" accept="image/*" capture="environment">` for native camera
+2. Desktop: use getUserMedia with rear-facing camera preference
+3. After capture: show image preview with animated scan line overlay
+4. Call `/api/ocr` endpoint with the image
+5. Parse response and pre-fill form fields (highlight pre-filled ones with green underline)
+6. User reviews and submits
+
+## Key Files Reference
+
+- `/schema.sql` — Full database schema
+- `/docs/DATABASE.md` — Table design and field descriptions
+- `/docs/ARCHITECTURE.md` — API design and directory structure
+- `/docs/UI_DESIGN.md` — Component specs and design tokens
+- `/docs/VIBECODE_PROMPTS.md` — Module-specific implementation prompts
+- `/docs/ISSUE_LOG.md` — Known logic risks and handling status
+
+## Common Patterns
+
+### Authenticated API Route
+
+```typescript
+import { withAuth } from "@/lib/auth/middleware";
+import { getRequestContext } from "@cloudflare/next-on-pages";
+
+export const runtime = "edge";
+
+export async function GET(request: Request) {
+  try {
+    const user = await withAuth(request);
+    const { env } = getRequestContext();
+    const db = env.DB;
+
+    const results = await db
+      .prepare("SELECT * FROM items WHERE user_id = ? AND status = ?")
+      .bind(user.id, "active")
+      .all();
+
+    return Response.json({ data: results.results });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return Response.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+```
+
+### SWR Data Fetching Hook
+
+```typescript
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+export function useItems(filters?: ItemFilters) {
+  const params = new URLSearchParams(filters as Record<string, string>);
+  const { data, error, isLoading, mutate } = useSWR(
+    `/api/items?${params}`,
+    fetcher,
+  );
+  return { items: data?.data ?? [], error, isLoading, mutate };
+}
+```
+
+### Framer Motion Card List
+
+```tsx
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+};
+
+<motion.div variants={container} initial="hidden" animate="show">
+  {items.map((item) => (
+    <motion.div key={item.id} variants={item}>
+      <ItemCard item={item} />
+    </motion.div>
+  ))}
+</motion.div>;
+```
