@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@heroui/react";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { ConfirmDialogProvider } from "@/components/providers/confirm-dialog-provider";
 import Image from "next/image";
 import { Home, LogOut, Package, SlidersHorizontal, Users } from "lucide-react";
@@ -43,6 +43,14 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
 ];
 
 export default function MainLayout({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <MainLayoutContent>{children}</MainLayoutContent>
+    </Suspense>
+  );
+}
+
+function MainLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();

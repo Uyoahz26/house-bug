@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import {
@@ -11,12 +11,19 @@ import {
   Form,
   Input,
   Label,
-  Link,
   Spinner,
   TextField,
 } from "@heroui/react";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -66,15 +73,9 @@ export default function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white text-zinc-900 dark:bg-black dark:text-zinc-100">
-      {/* 精致科技感背景设计 */}
       <div className="absolute inset-0 z-0 pointer-events-none flex justify-center">
-        {/* 背景网格 */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] [background-size:64px_64px] dark:bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,#000_20%,transparent_100%)]" />
-
-        {/* 顶部柔和光效晕染 */}
         <div className="absolute -top-32 h-[400px] w-[800px] bg-gradient-to-b from-zinc-200/50 to-transparent opacity-60 blur-3xl dark:from-indigo-900/20" />
-
-        {/* 中心微发光强调 */}
         <div className="absolute top-[20%] h-[300px] w-[500px] rounded-full bg-zinc-100/50 blur-[100px] dark:bg-cyan-900/10" />
       </div>
 
@@ -98,7 +99,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <Card className="w-full p-5  dark:border-zinc-800/70 dark:bg-black/60">
+        <Card className="w-full p-5 dark:border-zinc-800/70 dark:bg-black/60">
           <Form
             onSubmit={onSubmit}
             className="flex w-full flex-col"
@@ -161,7 +162,7 @@ export default function LoginPage() {
               <Button
                 isPending={isSubmitting}
                 type="submit"
-                className="h-10 w-full mt-4 bg-zinc-900 text-[15px] font-medium text-white shadow-md transition-all hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                className="mt-4 h-10 w-full bg-zinc-900 text-[15px] font-medium text-white shadow-md transition-all hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
               >
                 {({ isPending }) => (
                   <>

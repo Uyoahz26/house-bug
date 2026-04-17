@@ -96,17 +96,17 @@ function escapeHtml(value: string): string {
 
 async function loadCloudflareSocketConnect(): Promise<ConnectFn> {
   try {
-    const module = (await import(
+    const socketsModule = (await import(
       /* webpackIgnore: true */ "cloudflare:sockets"
     )) as {
       connect?: ConnectFn;
     };
 
-    if (typeof module.connect !== "function") {
+    if (typeof socketsModule.connect !== "function") {
       throw new Error("cloudflare:sockets.connect 不可用。");
     }
 
-    return module.connect;
+    return socketsModule.connect;
   } catch {
     throw new Error(
       "当前运行环境不支持 SMTP 直连。请使用 pnpm dev:worker 在 Cloudflare Worker 本地环境调试 SMTP，或将 email.provider 切换为 resend。",

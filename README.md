@@ -182,11 +182,18 @@ bucket_name = "homebug-images"  # 你的 R2 存储桶名
 ### 手动部署
 
 ```bash
-# 构建
-npm run build
+# 生成 Cloudflare Pages 构建产物
+npm run build:pages
 
 # 部署
 npm run deploy
+```
+
+### Cloudflare Pages（Git 绑定）构建配置
+
+```text
+Build command: npm run build:pages
+Build output directory: .vercel/output/static
 ```
 
 ### GitHub Actions 自动部署
@@ -203,7 +210,8 @@ npm run deploy
 ```bash
 npm run dev              # 本地开发（Next.js dev server）
 npm run dev:worker       # 本地开发（Wrangler Pages，含 D1/R2 模拟）
-npm run build            # 生产构建（@cloudflare/next-on-pages）
+npm run build            # Next.js 生产构建（next build）
+npm run build:pages      # Cloudflare Pages 构建（@cloudflare/next-on-pages）
 npm run deploy           # 部署到 Cloudflare Pages
 
 npm run db:migrate:local # 本地数据库迁移

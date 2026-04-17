@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "dev:worker": "wrangler pages dev .vercel/output/static",
-    "build": "npx @cloudflare/next-on-pages",
-    "deploy": "npm run build && wrangler pages deploy .vercel/output/static",
+    "build": "next build",
+    "build:pages": "npx @cloudflare/next-on-pages",
+    "deploy": "npm run build:pages && wrangler pages deploy .vercel/output/static",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
