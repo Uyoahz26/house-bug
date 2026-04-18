@@ -20,12 +20,38 @@ interface CustomParsedData {
   unit?: string | null;
 }
 
+interface AiExtractedData {
+  name: string | null;
+  brand: string | null;
+  quantity: number | null;
+  itemUnit: string | null;
+  productionDate: string | null;
+  shelfLife: number | null;
+  unit: "day" | "month" | "year" | null;
+}
+
+interface AiExtractedRawData {
+  name?: unknown;
+  brand?: unknown;
+  quantity?: unknown;
+  itemUnit?: unknown;
+  productionDate?: unknown;
+  shelfLife?: unknown;
+  unit?: unknown;
+  rawText?: unknown;
+}
+
 const WORKER_OCR_MODEL =
   process.env.WORKER_OCR_MODEL || "@cf/llava-hf/llava-1.5-7b-hf";
 const WORKER_OCR_TIMEOUT_MS = (() => {
   const raw = process.env.WORKER_OCR_TIMEOUT_MS;
   const parsed = raw ? Number.parseInt(raw, 10) : NaN;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 20_000;
+})();
+const WORKER_OCR_MAX_IMAGE_BYTES = (() => {
+  const raw = process.env.WORKER_OCR_MAX_IMAGE_BYTES;
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1_200_000;
 })();
 
 function extractBase64Image(image: string): string {
@@ -51,20 +77,28 @@ function extractBase64Image(image: string): string {
   return value;
 }
 
-function decodeBase64ToBytes(base64: string): Uint8Array {
-  let binary = "";
-  try {
-    binary = atob(base64);
-  } catch {
-    throw new Error("图片 base64 解码失败。");
+function toDataUrl(image: string, base64: string): string {
+  const value = image.trim();
+  if (value.startsWith("data:")) {
+    return value;
   }
 
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
+  // Default to JPEG when mime type is unknown.
+  return `data:image/jpeg;base64,${base64}`;
+}
+
+function estimateBase64Bytes(base64: string): number {
+  const normalized = base64.replace(/\s+/g, "");
+  if (!normalized) {
+    return 0;
   }
 
-  return bytes;
+  const padding = normalized.endsWith("==")
+    ? 2
+    : normalized.endsWith("=")
+      ? 1
+      : 0;
+  return Math.floor((normalized.length * 3) / 4) - padding;
 }
 
 function getWorkersAiBinding(): WorkersAiBinding {
@@ -141,8 +175,118 @@ function normalizeParsedData(input: unknown): ParsedOcrData | null {
   };
 }
 
+function normalizeExtractedData(input: unknown): AiExtractedData | null {
+  if (!input || typeof input !== "object") {
+    return null;
+  }
+
+  const source = input as Record<string, unknown>;
+
+  const name =
+    typeof source.name === "string" && source.name.trim()
+      ? source.name.trim()
+      : null;
+  const brand =
+    typeof source.brand === "string" && source.brand.trim()
+      ? source.brand.trim()
+      : null;
+
+  const quantityRaw = source.quantity;
+  const quantity =
+    typeof quantityRaw === "number" && Number.isFinite(quantityRaw)
+      ? Math.max(0, Math.floor(quantityRaw))
+      : null;
+
+  const itemUnit =
+    typeof source.itemUnit === "string" && source.itemUnit.trim()
+      ? source.itemUnit.trim()
+      : null;
+
+  const productionDate =
+    typeof source.productionDate === "string" && source.productionDate.trim()
+      ? source.productionDate.trim()
+      : null;
+
+  const shelfLifeRaw = source.shelfLife;
+  const shelfLife =
+    typeof shelfLifeRaw === "number" && Number.isFinite(shelfLifeRaw)
+      ? Math.max(0, Math.floor(shelfLifeRaw))
+      : null;
+
+  const unitRaw = source.unit;
+  const unit =
+    unitRaw === "day" || unitRaw === "month" || unitRaw === "year"
+      ? unitRaw
+      : null;
+
+  if (
+    !name &&
+    !brand &&
+    quantity === null &&
+    !itemUnit &&
+    !productionDate &&
+    shelfLife === null &&
+    !unit
+  ) {
+    return null;
+  }
+
+  return {
+    name,
+    brand,
+    quantity,
+    itemUnit,
+    productionDate,
+    shelfLife,
+    unit,
+  };
+}
+
+function extractJsonObjectFromText(
+  text: string,
+): Record<string, unknown> | null {
+  const source = text.trim();
+  if (!source) {
+    return null;
+  }
+
+  const candidates: string[] = [];
+  candidates.push(source);
+
+  const fencedMatch = source.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch?.[1]) {
+    candidates.push(fencedMatch[1]);
+  }
+
+  const firstBrace = source.indexOf("{");
+  const lastBrace = source.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    candidates.push(source.slice(firstBrace, lastBrace + 1));
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // Ignore invalid JSON candidates and continue.
+    }
+  }
+
+  return null;
+}
+
 function extractRawText(payload: unknown): string {
   if (typeof payload === "string") {
+    const jsonObject = extractJsonObjectFromText(payload);
+    if (jsonObject) {
+      const candidate = jsonObject.rawText;
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate;
+      }
+    }
     return payload;
   }
 
@@ -208,6 +352,113 @@ function extractParsed(payload: unknown): ParsedOcrData | null {
   return null;
 }
 
+function extractStructuredData(payload: unknown): AiExtractedData | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const direct = normalizeExtractedData(payload);
+  if (direct) {
+    return direct;
+  }
+
+  const objectPayload = payload as Record<string, unknown>;
+
+  const parsedDirect = normalizeExtractedData(objectPayload.parsed);
+  if (parsedDirect) {
+    return parsedDirect;
+  }
+
+  const data = objectPayload.data;
+  if (data && typeof data === "object") {
+    const objectData = data as Record<string, unknown>;
+    const parsedData =
+      normalizeExtractedData(objectData) ||
+      normalizeExtractedData(objectData.parsed);
+    if (parsedData) {
+      return parsedData;
+    }
+  }
+
+  const rawText = extractRawText(payload);
+  const jsonObject = extractJsonObjectFromText(rawText);
+  if (jsonObject) {
+    return normalizeExtractedData(jsonObject);
+  }
+
+  return null;
+}
+
+function pickAiRawFields(
+  source: Record<string, unknown>,
+): AiExtractedRawData | null {
+  const picked: AiExtractedRawData = {};
+
+  const keys: Array<keyof AiExtractedRawData> = [
+    "name",
+    "brand",
+    "quantity",
+    "itemUnit",
+    "productionDate",
+    "shelfLife",
+    "unit",
+    "rawText",
+  ];
+
+  for (const key of keys) {
+    if (key in source) {
+      picked[key] = source[key];
+    }
+  }
+
+  return Object.keys(picked).length > 0 ? picked : null;
+}
+
+function extractStructuredRawData(payload: unknown): AiExtractedRawData | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const objectPayload = payload as Record<string, unknown>;
+  const direct = pickAiRawFields(objectPayload);
+  if (direct) {
+    return direct;
+  }
+
+  const parsedDirect =
+    objectPayload.parsed && typeof objectPayload.parsed === "object"
+      ? pickAiRawFields(objectPayload.parsed as Record<string, unknown>)
+      : null;
+  if (parsedDirect) {
+    return parsedDirect;
+  }
+
+  const data = objectPayload.data;
+  if (data && typeof data === "object") {
+    const objectData = data as Record<string, unknown>;
+    const nestedData = pickAiRawFields(objectData);
+    if (nestedData) {
+      return nestedData;
+    }
+
+    const nestedParsed =
+      objectData.parsed && typeof objectData.parsed === "object"
+        ? pickAiRawFields(objectData.parsed as Record<string, unknown>)
+        : null;
+    if (nestedParsed) {
+      return nestedParsed;
+    }
+  }
+
+  const rawText = extractRawText(payload);
+  const jsonObject = extractJsonObjectFromText(rawText);
+  if (jsonObject) {
+    return pickAiRawFields(jsonObject);
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     await requireActiveUser(request);
@@ -219,9 +470,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "缺少图片内容。" }, { status: 400 });
     }
 
-    let imageBytes: Uint8Array;
+    let imageBytesLength = 0;
+    let aiImageInput = "";
     try {
-      imageBytes = decodeBase64ToBytes(extractBase64Image(image));
+      const base64 = extractBase64Image(image);
+      imageBytesLength = estimateBase64Bytes(base64);
+      if (!Number.isFinite(imageBytesLength) || imageBytesLength <= 0) {
+        throw new Error("图片 base64 解码失败。");
+      }
+      aiImageInput = toDataUrl(image, base64);
     } catch (error) {
       return NextResponse.json(
         {
@@ -233,12 +490,24 @@ export async function POST(request: Request) {
       );
     }
 
+    if (imageBytesLength > WORKER_OCR_MAX_IMAGE_BYTES) {
+      const maxMb = (WORKER_OCR_MAX_IMAGE_BYTES / (1024 * 1024)).toFixed(1);
+      return NextResponse.json(
+        {
+          error: `图片过大，请压缩到 ${maxMb}MB 内后重试。`,
+          code: "IMAGE_TOO_LARGE",
+        },
+        { status: 413 },
+      );
+    }
+
     const ai = getWorkersAiBinding();
 
     const payload = await withTimeout(
       ai.run(WORKER_OCR_MODEL, {
-        image: [...imageBytes],
-        prompt: "提取图片中的全部可读文字，保持原始顺序输出，不要解释。",
+        image: aiImageInput,
+        prompt:
+          '你是商品信息识别助手。请先识别图片中的文字，再只输出 JSON（不要 markdown、不要解释）。JSON 结构: {"name": string|null, "brand": string|null, "quantity": number|null, "itemUnit": string|null, "productionDate": "YYYY-MM-DD"|null, "shelfLife": number|null, "unit": "day"|"month"|"year"|null, "rawText": string}。若无法确定请用 null，日期必须是 YYYY-MM-DD。',
         max_tokens: 700,
         temperature: 0,
       }),
@@ -247,6 +516,8 @@ export async function POST(request: Request) {
     );
 
     const rawText = extractRawText(payload).trim();
+    const extractedFromProvider = extractStructuredData(payload);
+    const extractedRawFromProvider = extractStructuredRawData(payload);
     const parsedFromProvider = extractParsed(payload);
     const parsedFromText = parseOCRText(rawText);
 
@@ -254,11 +525,26 @@ export async function POST(request: Request) {
       data: {
         provider: "workerocr",
         rawText,
+        extracted: {
+          name: extractedFromProvider?.name ?? null,
+          brand: extractedFromProvider?.brand ?? null,
+          quantity: extractedFromProvider?.quantity ?? null,
+          itemUnit: extractedFromProvider?.itemUnit ?? null,
+        },
+        extractedRaw: extractedRawFromProvider,
         parsed: {
           productionDate:
-            parsedFromProvider?.productionDate ?? parsedFromText.productionDate,
-          shelfLife: parsedFromProvider?.shelfLife ?? parsedFromText.shelfLife,
-          unit: parsedFromProvider?.unit ?? parsedFromText.unit,
+            parsedFromProvider?.productionDate ??
+            extractedFromProvider?.productionDate ??
+            parsedFromText.productionDate,
+          shelfLife:
+            parsedFromProvider?.shelfLife ??
+            extractedFromProvider?.shelfLife ??
+            parsedFromText.shelfLife,
+          unit:
+            parsedFromProvider?.unit ??
+            extractedFromProvider?.unit ??
+            parsedFromText.unit,
         },
       },
     });
