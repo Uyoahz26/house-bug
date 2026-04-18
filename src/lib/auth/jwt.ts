@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { AuthTokenPayload } from "@/types/auth";
 
-const TOKEN_EXPIRES_IN = "7d";
+const TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "30d";
 
 function getJwtSecret(): Uint8Array {
   const rawSecret = process.env.JWT_SECRET;

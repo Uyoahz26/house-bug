@@ -2,7 +2,10 @@
 
 import { Button } from "@heroui/react";
 import { ReactNode, Suspense, useEffect, useMemo, useState } from "react";
-import { ConfirmDialogProvider } from "@/components/providers/confirm-dialog-provider";
+import {
+  ConfirmDialogProvider,
+  useConfirmDialog,
+} from "@/components/providers/confirm-dialog-provider";
 import Image from "next/image";
 import { Home, LogOut, Package, SlidersHorizontal, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -44,9 +47,11 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={null}>
-      <MainLayoutContent>{children}</MainLayoutContent>
-    </Suspense>
+    <ConfirmDialogProvider>
+      <Suspense fallback={null}>
+        <MainLayoutContent>{children}</MainLayoutContent>
+      </Suspense>
+    </ConfirmDialogProvider>
   );
 }
 
@@ -54,6 +59,7 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { confirm } = useConfirmDialog();
 
   const [user, setUser] = useState<UserProfile | null>(null);
 
@@ -93,6 +99,18 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
   }, [pathname, searchParams]);
 
   async function handleLogout() {
+    const shouldLogout = await confirm({
+      title: "确认退出登录？",
+      description: "退出后将返回登录页，需要重新输入账号密码。",
+      confirmText: "退出登录",
+      cancelText: "取消",
+      status: "warning",
+    });
+
+    if (!shouldLogout) {
+      return;
+    }
+
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
@@ -102,8 +120,7 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ConfirmDialogProvider>
-      <div className="relative min-h-screen bg-white text-zinc-900 dark:bg-black dark:text-zinc-100 md:pl-64">
+    <div className="relative min-h-screen bg-white text-zinc-900 dark:bg-black dark:text-zinc-100 md:pl-64">
         {/* Background layer */}
         <div className="fixed inset-0 z-0 pointer-events-none flex justify-center">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] [background-size:64px_64px] dark:bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,#000_20%,transparent_100%)]" />
@@ -225,6 +242,5 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
           </div>
         </nav>
       </div>
-    </ConfirmDialogProvider>
   );
 }

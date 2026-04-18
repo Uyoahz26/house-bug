@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/queries/users";
 
 export const runtime = "edge";
+const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 interface LoginInput {
   email?: string;
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: AUTH_COOKIE_MAX_AGE,
     });
 
     return response;

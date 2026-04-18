@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyToken } from "@/lib/auth/jwt";
+import { generateToken, verifyToken } from "@/lib/auth/jwt";
+
+const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 function redirectToLogin(request: NextRequest, clearToken = false) {
   const loginUrl = new URL("/login", request.url);
@@ -31,12 +33,24 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    await verifyToken(token);
+    const authPayload = await verifyToken(token);
+    const refreshedToken = await generateToken(authPayload);
+
+    const response = NextResponse.next();
+    response.cookies.set({
+      name: "token",
+      value: refreshedToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: AUTH_COOKIE_MAX_AGE,
+    });
+
+    return response;
   } catch {
     return redirectToLogin(request, true);
   }
-
-  return NextResponse.next();
 }
 
 export const config = {
