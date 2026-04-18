@@ -26,6 +26,7 @@ interface BuildAuthorizationInput {
   host: string;
   secretId: string;
   secretKey: string;
+  uriEncodingMode?: "encoded" | "raw";
 }
 
 export interface UploadCosImageInput {
@@ -156,8 +157,10 @@ async function buildAuthorization(
   const endAt = startAt + 7200;
   const signTime = `${startAt};${endAt}`;
 
-  // COS V5 签名应使用与请求一致的 URI（分段编码后保留 /）。
-  const canonicalUri = `/${encodeObjectKey(input.objectKey)}`;
+  const canonicalUri =
+    input.uriEncodingMode === "raw"
+      ? `/${input.objectKey.replace(/^\/+/, "")}`
+      : `/${encodeObjectKey(input.objectKey)}`;
   const httpString = `${input.method.toLowerCase()}\n${canonicalUri}\n\nhost=${input.host}\n`;
   const httpStringSha1 = await sha1Hex(httpString);
 
@@ -211,6 +214,7 @@ async function cosRequest(
     objectKey: string;
     body?: ArrayBuffer;
     mimeType?: string;
+    uriEncodingMode?: "encoded" | "raw";
   },
 ): Promise<Response> {
   const host = `${config.bucket}.cos.${config.region}.myqcloud.com`;
@@ -221,6 +225,7 @@ async function cosRequest(
     host,
     secretId: config.secretId,
     secretKey: config.secretKey,
+    uriEncodingMode: input.uriEncodingMode,
   });
 
   return fetch(`https://${host}/${encodedObjectKey}`, {
@@ -231,6 +236,10 @@ async function cosRequest(
     },
     body: input.body,
   });
+}
+
+function isSignatureMismatch(status: number, detail: string): boolean {
+  return status === 403 && detail.includes("SignatureDoesNotMatch");
 }
 
 export async function uploadImageToCos(
@@ -253,12 +262,38 @@ export async function uploadImageToCos(
   });
 
   if (!response.ok) {
-    const detail = await response.text();
+    let detail = await response.text();
+
+    if (isSignatureMismatch(response.status, detail)) {
+      const retryResponse = await cosRequest(config, {
+        method: "PUT",
+        objectKey,
+        mimeType: input.mimeType,
+        body: input.content,
+        uriEncodingMode: "raw",
+      });
+
+      if (retryResponse.ok) {
+        return {
+          imageUrl: buildPublicUrl(config, objectKey),
+          objectKey,
+        };
+      }
+
+      detail = await retryResponse.text();
+      const signatureHint = detail.includes("SignatureDoesNotMatch")
+        ? "（签名不匹配：请检查 SecretId/SecretKey、Bucket、Region，并确认对象路径编码与签名一致）"
+        : "";
+      throw new Error(
+        `上传图片到 COS 失败（${retryResponse.status}）${signatureHint}。${detail.slice(0, 220)}`,
+      );
+    }
+
     const signatureHint = detail.includes("SignatureDoesNotMatch")
       ? "（签名不匹配：请检查 SecretId/SecretKey、Bucket、Region，并确认对象路径编码与签名一致）"
       : "";
     throw new Error(
-      `上传图片到 COS 失败（${response.status}）${signatureHint}。${detail.slice(0, 180)}`,
+      `上传图片到 COS 失败（${response.status}）${signatureHint}。${detail.slice(0, 220)}`,
     );
   }
 
@@ -305,12 +340,33 @@ export async function deleteImageFromCosByUrl(
   }
 
   if (!response.ok) {
-    const detail = await response.text();
+    let detail = await response.text();
+
+    if (isSignatureMismatch(response.status, detail)) {
+      const retryResponse = await cosRequest(config, {
+        method: "DELETE",
+        objectKey,
+        uriEncodingMode: "raw",
+      });
+
+      if (retryResponse.ok || retryResponse.status === 404) {
+        return;
+      }
+
+      detail = await retryResponse.text();
+      const signatureHint = detail.includes("SignatureDoesNotMatch")
+        ? "（签名不匹配：请检查 SecretId/SecretKey、Bucket、Region，并确认对象路径编码与签名一致）"
+        : "";
+      throw new Error(
+        `删除 COS 图片失败（${retryResponse.status}）${signatureHint}。${detail.slice(0, 220)}`,
+      );
+    }
+
     const signatureHint = detail.includes("SignatureDoesNotMatch")
       ? "（签名不匹配：请检查 SecretId/SecretKey、Bucket、Region，并确认对象路径编码与签名一致）"
       : "";
     throw new Error(
-      `删除 COS 图片失败（${response.status}）${signatureHint}。${detail.slice(0, 180)}`,
+      `删除 COS 图片失败（${response.status}）${signatureHint}。${detail.slice(0, 220)}`,
     );
   }
 }

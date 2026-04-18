@@ -350,10 +350,10 @@ export default function DashboardPage() {
                       <Clock className="h-5 w-5 text-emerald-500/70" />
                     </div>
                     <p className="text-[13px] font-medium text-zinc-600 dark:text-zinc-300">
-                      暂无任何临期或过期物资
+                      暂时没有任何临期或过期的囤囤货
                     </p>
                     <p className="mt-1 text-[11px] text-zinc-400">
-                      目前库房非常健康
+                      囤囤鼠的囤囤货非常健康👍
                     </p>
                   </div>
                 ) : (
@@ -433,7 +433,7 @@ export default function DashboardPage() {
                       <Package className="h-5 w-5 text-blue-400/70" />
                     </div>
                     <p className="text-[13px] font-medium text-zinc-600 dark:text-zinc-300">
-                      库存充足，暂无需要补货物资
+                      库存充足，不要再当囤囤鼠了
                     </p>
                     <p className="mt-1 text-[11px] text-zinc-400">
                       当前没有短缺风险
