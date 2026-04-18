@@ -190,29 +190,33 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
 
         <div className="relative z-10 pb-24 md:pb-0">{children}</div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200/50 bg-white/70 px-3 py-2 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-black/70 md:hidden">
-          <div
-            className="mx-auto grid max-w-md gap-1"
-            style={{
-              gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))`,
-            }}
-          >
+        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200/50 bg-white/80 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-black/80 md:hidden">
+          <div className="mx-auto flex max-w-md items-center justify-around gap-1 px-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeNav === item.key;
               return (
                 <Button
                   key={item.key}
-                  variant="ghost"
+                  variant="light"
                   onPress={() => router.push(item.href)}
-                  className={`h-14 flex-col gap-1 rounded-xl border-none px-2 ${
+                  className={`flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-none px-1 transition-all !min-w-0 ${
                     isActive
-                      ? "text-black dark:text-white"
-                      : "text-zinc-400 dark:text-zinc-500"
+                      ? "bg-zinc-100/80 text-black dark:bg-zinc-800/60 dark:text-white"
+                      : "text-zinc-500 hover:bg-zinc-100/50 dark:text-zinc-400 dark:hover:bg-zinc-800/40"
                   }`}
                 >
-                  <Icon className={`h-5 w-5 ${isActive ? "scale-105" : ""}`} />
-                  <span className="text-[11px] font-medium leading-none">
+                  <Icon
+                    className={`h-[22px] w-[22px] transition-transform ${
+                      isActive ? "scale-110" : ""
+                    }`}
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  <span
+                    className={`text-[10px] tracking-wide transition-all ${
+                      isActive ? "font-bold" : "font-medium"
+                    } leading-none`}
+                  >
                     {item.label}
                   </span>
                 </Button>

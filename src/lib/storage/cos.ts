@@ -156,8 +156,9 @@ async function buildAuthorization(
   const endAt = startAt + 7200;
   const signTime = `${startAt};${endAt}`;
 
-  // COS V5 签名的 URI 路径使用对象键原始值，不使用 URL 编码后的路径。
-  const httpString = `${input.method.toLowerCase()}\n/${input.objectKey}\n\nhost=${input.host}\n`;
+  // COS V5 签名应使用与请求一致的 URI（分段编码后保留 /）。
+  const canonicalUri = `/${encodeObjectKey(input.objectKey)}`;
+  const httpString = `${input.method.toLowerCase()}\n${canonicalUri}\n\nhost=${input.host}\n`;
   const httpStringSha1 = await sha1Hex(httpString);
 
   const stringToSign = `sha1\n${signTime}\n${httpStringSha1}\n`;
@@ -253,8 +254,11 @@ export async function uploadImageToCos(
 
   if (!response.ok) {
     const detail = await response.text();
+    const signatureHint = detail.includes("SignatureDoesNotMatch")
+      ? "（签名不匹配：请检查 SecretId/SecretKey、Bucket、Region，并确认对象路径编码与签名一致）"
+      : "";
     throw new Error(
-      `上传图片到 COS 失败（${response.status}）。${detail.slice(0, 120)}`,
+      `上传图片到 COS 失败（${response.status}）${signatureHint}。${detail.slice(0, 180)}`,
     );
   }
 
@@ -302,8 +306,11 @@ export async function deleteImageFromCosByUrl(
 
   if (!response.ok) {
     const detail = await response.text();
+    const signatureHint = detail.includes("SignatureDoesNotMatch")
+      ? "（签名不匹配：请检查 SecretId/SecretKey、Bucket、Region，并确认对象路径编码与签名一致）"
+      : "";
     throw new Error(
-      `删除 COS 图片失败（${response.status}）。${detail.slice(0, 120)}`,
+      `删除 COS 图片失败（${response.status}）${signatureHint}。${detail.slice(0, 180)}`,
     );
   }
 }
