@@ -8,6 +8,36 @@ export const runtime = "edge";
 
 const SECRET_MASK = "***";
 const TEXT_ENCODER = new TextEncoder();
+const EMAIL_SEND_TIMEOUT_MS = 25_000;
+
+class OperationTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OperationTimeoutError";
+  }
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new OperationTimeoutError(message));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
 
 const EMAIL_CONFIG_KEYS = [
   "app.name",
@@ -210,28 +240,32 @@ async function sendViaResend(input: {
   subject: string;
   appName: string;
 }): Promise<string | null> {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: input.from,
-      to: [input.to],
-      subject: input.subject,
-      text: buildPlainText({
-        appName: input.appName,
-        to: input.to,
-        provider: "resend",
-      }),
-      html: buildHtml({
-        appName: input.appName,
-        to: input.to,
-        provider: "resend",
+  const response = await withTimeout(
+    fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${input.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: input.from,
+        to: [input.to],
+        subject: input.subject,
+        text: buildPlainText({
+          appName: input.appName,
+          to: input.to,
+          provider: "resend",
+        }),
+        html: buildHtml({
+          appName: input.appName,
+          to: input.to,
+          provider: "resend",
+        }),
       }),
     }),
-  });
+    EMAIL_SEND_TIMEOUT_MS,
+    "Resend 请求超时，请检查网络或稍后重试。",
+  );
 
   const raw = await response.text();
   let payload: ResendPayload = {};
@@ -564,16 +598,20 @@ export async function POST(request: Request) {
         );
       }
 
-      messageId = await sendViaSmtp({
-        host,
-        port,
-        username,
-        password,
-        from,
-        to,
-        subject,
-        appName,
-      });
+      messageId = await withTimeout(
+        sendViaSmtp({
+          host,
+          port,
+          username,
+          password,
+          from,
+          to,
+          subject,
+          appName,
+        }),
+        EMAIL_SEND_TIMEOUT_MS,
+        "SMTP 发送超时，请检查 SMTP 地址、端口、TLS 配置及网络连通性。",
+      );
     }
 
     return NextResponse.json({
@@ -584,6 +622,10 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof OperationTimeoutError) {
+      return NextResponse.json({ error: error.message }, { status: 504 });
+    }
+
     if (error instanceof AuthError) {
       return NextResponse.json({ error: "未登录。" }, { status: 401 });
     }
