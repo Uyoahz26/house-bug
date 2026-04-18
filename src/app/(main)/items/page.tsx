@@ -224,6 +224,45 @@ function toShelfLifeDays(
   return amount * 365;
 }
 
+function mapShelfLifeDaysToForm(days: number | null): {
+  value: number | undefined;
+  unit: ItemShelfLifeUnit;
+} {
+  if (days === null || !Number.isFinite(days) || days < 0) {
+    return {
+      value: undefined,
+      unit: "day",
+    };
+  }
+
+  const amount = Math.floor(days);
+  if (amount !== 0 && amount % 365 === 0) {
+    return {
+      value: amount / 365,
+      unit: "year",
+    };
+  }
+
+  if (amount !== 0 && amount % 30 === 0) {
+    return {
+      value: amount / 30,
+      unit: "month",
+    };
+  }
+
+  if (amount !== 0 && amount % 7 === 0) {
+    return {
+      value: amount / 7,
+      unit: "week",
+    };
+  }
+
+  return {
+    value: amount,
+    unit: "day",
+  };
+}
+
 function revokePreviewUrl(url: string | null) {
   if (url?.startsWith("blob:")) {
     URL.revokeObjectURL(url);
@@ -270,7 +309,7 @@ export default function ItemsPage() {
   const [error, setError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>("active");
+  const [statusFilter, setStatusFilter] = useState<ItemStatusFilter>("all");
   const [busyItemIds, setBusyItemIds] = useState<Record<string, boolean>>({});
 
   const [categories, setCategories] = useState<string[]>([]);
@@ -301,6 +340,7 @@ export default function ItemsPage() {
 
   const [viewingItem, setViewingItem] = useState<Item | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDesktopModal, setIsDesktopModal] = useState(false);
 
   const [page, setPage] = useState(1);
   const ROWS_PER_PAGE = 10;
@@ -374,6 +414,18 @@ export default function ItemsPage() {
     openCreateModal();
   }, [searchParams, unitOptions]);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+
+    const update = () => {
+      setIsDesktopModal(mediaQuery.matches);
+    };
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
   const stats = useMemo(() => {
     return {
       total: items.length,
@@ -423,6 +475,8 @@ export default function ItemsPage() {
   }
 
   function openEditModal(item: Item) {
+    const shelfLifePreset = mapShelfLifeDaysToForm(item.shelfLifeDays);
+
     setModalMode("edit");
     setEditingItemId(item.id);
     setEditingItemStatus(item.status);
@@ -434,8 +488,8 @@ export default function ItemsPage() {
       categoryId: item.categoryName ?? item.category ?? "",
       locationId: item.locationName ?? item.location ?? "",
       productionDate: item.productionDate ?? "",
-      shelfLifeValue: item.shelfLifeDays ?? undefined,
-      shelfLifeUnit: "day",
+      shelfLifeValue: shelfLifePreset.value,
+      shelfLifeUnit: shelfLifePreset.unit,
       expiryDate: item.expiryDate ?? "",
       quantity: item.quantity,
       unit: item.unit || unitOptions[0] || "个",
@@ -912,8 +966,8 @@ export default function ItemsPage() {
             onSubmit={onSearch}
             className="relative flex flex-1 items-center"
           >
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="h-4 w-4 text-zinc-400" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3">
+              <Search className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
             </div>
             <Input
               aria-label="搜索物资"
@@ -1295,8 +1349,8 @@ export default function ItemsPage() {
           setIsModalOpen(true);
         }}
       >
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[95vh] w-[calc(100vw-24px)] max-w-5xl overflow-auto p-4">
+        <Modal.Container size={isDesktopModal ? "cover" : "full"}>
+          <Modal.Dialog className="max-h-[95vh] w-full md:w-60vw md:w-[60vw] overflow-auto p-4">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading>

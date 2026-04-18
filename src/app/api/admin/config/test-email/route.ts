@@ -394,6 +394,20 @@ async function sendViaSmtp(input: {
       .filter(Boolean);
   };
 
+  const authenticateWithLogin = async (context: string) => {
+    await sendLine("AUTH LOGIN");
+    const authLoginReply = await readReply();
+    expectReply(authLoginReply, [334], `${context} 初始化`);
+
+    await sendLine(btoa(input.username));
+    const authUserReply = await readReply();
+    expectReply(authUserReply, [334], `${context} 用户名`);
+
+    await sendLine(btoa(input.password));
+    const authPasswordReply = await readReply();
+    expectReply(authPasswordReply, [235], `${context} 密码`);
+  };
+
   try {
     const greeting = await readReply();
     expectReply(greeting, [220], "连接");
@@ -436,19 +450,20 @@ async function sendViaSmtp(input: {
       );
       await sendLine(`AUTH PLAIN ${authPayload}`);
       const authReply = await readReply();
-      expectReply(authReply, [235], "AUTH PLAIN");
+      if (authReply.code !== 235) {
+        const shouldFallbackToLogin =
+          authReply.code === 535 &&
+          (authMethods.includes("LOGIN") ||
+            input.host.toLowerCase() === "smtp.qq.com");
+
+        if (shouldFallbackToLogin) {
+          await authenticateWithLogin("AUTH LOGIN 回退");
+        } else {
+          expectReply(authReply, [235], "AUTH PLAIN");
+        }
+      }
     } else {
-      await sendLine("AUTH LOGIN");
-      const authLoginReply = await readReply();
-      expectReply(authLoginReply, [334], "AUTH LOGIN 初始化");
-
-      await sendLine(btoa(input.username));
-      const authUserReply = await readReply();
-      expectReply(authUserReply, [334], "AUTH LOGIN 用户名");
-
-      await sendLine(btoa(input.password));
-      const authPasswordReply = await readReply();
-      expectReply(authPasswordReply, [235], "AUTH LOGIN 密码");
+      await authenticateWithLogin("AUTH LOGIN");
     }
 
     await sendLine(`MAIL FROM:<${sanitizeHeaderValue(input.from)}>`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Modal } from "@heroui/react";
 import { CalendarDays, Clock3, Eye, Package, Tag } from "lucide-react";
 
@@ -88,6 +88,19 @@ export function ItemDetailModal({
   onOpenChange,
 }: ItemDetailModalProps) {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+
+    const update = () => {
+      setIsDesktop(mediaQuery.matches);
+    };
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
 
   const expiryMeta = useMemo(
     () => getExpiryTagMeta(item?.expiryDate ?? null),
@@ -101,111 +114,146 @@ export function ItemDetailModal({
   return (
     <>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
-        <Modal.Container placement="center" size="lg">
-          <Modal.Dialog className="max-h-[90vh] overflow-auto p-4 sm:p-5">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <div className="w-full space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Modal.Heading className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                    {item.name}
-                  </Modal.Heading>
-                  <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${expiryMeta.className}`}
-                  >
-                    {expiryMeta.text}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {item.brand || "未填写品牌"}
-                </p>
+        <Modal.Container placement="center" size={isDesktop ? "cover" : "full"}>
+          <Modal.Dialog className="max-h-[90vh] w-full overflow-hidden p-0 md:w-[60vw]">
+            <Modal.CloseTrigger className="absolute right-4 top-4 z-10 text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors" />
+
+            <div className="flex h-full max-h-[90vh] flex-col md:flex-row">
+              {/* Left Column: Edge-to-edge image on mobile, full height on desktop */}
+              <div className="relative flex min-h-[240px] w-full shrink-0 flex-col items-center justify-center bg-zinc-100/80 dark:bg-zinc-900/50 md:w-[40%]">
+                {item.imageUrl ? (
+                  <>
+                    <img
+                      src={item.imageUrl}
+                      alt={`${item.name} 图片`}
+                      className="absolute inset-0 h-full w-full cursor-zoom-in object-cover opacity-30 blur-xl dark:opacity-20"
+                      aria-hidden="true"
+                    />
+                    <img
+                      src={item.imageUrl}
+                      alt={`${item.name} 图片`}
+                      className="relative z-10 max-h-[40vh] w-auto cursor-zoom-in object-contain p-6 md:max-h-[70vh]"
+                      onClick={() => setIsImagePreviewOpen(true)}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="absolute bottom-4 right-4 z-10 shadow-sm backdrop-blur-md bg-white/80 dark:bg-zinc-800/80 hover:bg-white dark:hover:bg-zinc-800"
+                      onPress={() => setIsImagePreviewOpen(true)}
+                    >
+                      <Eye className="mr-1.5 h-4 w-4" />
+                      大图
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600">
+                    <Package className="mb-3 h-12 w-12 opacity-20" />
+                    <span className="text-sm font-medium tracking-wide">
+                      暂无图片
+                    </span>
+                  </div>
+                )}
               </div>
-            </Modal.Header>
 
-            <Modal.Body>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-[300px_minmax(0,1fr)]">
-                <Card className="border border-zinc-200/70 bg-zinc-50/70 dark:border-zinc-800/70 dark:bg-zinc-900/40">
-                  <Card.Content className="space-y-3 p-3">
-                    {item.imageUrl ? (
-                      <div className="space-y-2">
-                        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-950/70">
-                          <img
-                            src={item.imageUrl}
-                            alt={`${item.name} 图片`}
-                            className="mx-auto max-h-60 w-auto cursor-zoom-in rounded-md object-contain"
-                            onClick={() => setIsImagePreviewOpen(true)}
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="w-full"
-                          onPress={() => setIsImagePreviewOpen(true)}
-                        >
-                          <Eye className="mr-1.5 h-4 w-4" />
-                          预览大图
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex h-52 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                        暂无图片
-                      </div>
-                    )}
-                  </Card.Content>
-                </Card>
-
-                <Card className="border border-zinc-200/70 bg-white/80 dark:border-zinc-800/70 dark:bg-zinc-900/50">
-                  <Card.Content className="space-y-3 p-4">
-                    <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-                      <div className="rounded-lg border border-zinc-200/70 bg-zinc-50 p-3 dark:border-zinc-800/70 dark:bg-zinc-900/60">
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          分类
-                        </p>
-                        <p className="mt-1 font-medium text-zinc-900 dark:text-zinc-100">
-                          {item.categoryName || item.category || "未分类"}
+              {/* Right Column: Details */}
+              <div className="flex w-full flex-col overflow-y-auto p-6 md:p-8">
+                <Modal.Header className="px-0 pb-6 pt-0 border-b-0">
+                  <div className="space-y-4 w-full">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1.5 pr-6">
+                        <Modal.Heading className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                          {item.name}
+                        </Modal.Heading>
+                        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                          {item.brand || "未填写品牌"}
                         </p>
                       </div>
-                      <div className="rounded-lg border border-zinc-200/70 bg-zinc-50 p-3 dark:border-zinc-800/70 dark:bg-zinc-900/60">
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          位置
-                        </p>
-                        <p className="mt-1 font-medium text-zinc-900 dark:text-zinc-100">
-                          {item.locationName || item.location || "未设置"}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-zinc-200/70 bg-zinc-50 p-3 dark:border-zinc-800/70 dark:bg-zinc-900/60">
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          数量
-                        </p>
-                        <p className="mt-1 font-medium text-zinc-900 dark:text-zinc-100">
-                          {item.quantity} {item.unit}
-                        </p>
-                      </div>
+                      <span
+                        className={`mt-1 shrink-0 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${expiryMeta.className}`}
+                      >
+                        {expiryMeta.text}
+                      </span>
                     </div>
+                  </div>
+                </Modal.Header>
 
-                    <div className="space-y-2 rounded-lg border border-zinc-200/70 bg-zinc-50/80 p-3 dark:border-zinc-800/70 dark:bg-zinc-900/50">
-                      <div className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
-                        <CalendarDays className="h-4 w-4 text-zinc-500" />
-                        <span>生产日期：{item.productionDate || "-"}</span>
+                <Modal.Body className="px-0 py-0 space-y-8">
+                  {/* Basic Info Grid */}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                    <div className="group flex flex-col rounded-xl border border-zinc-200/60 bg-white p-3.5 shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800/60 dark:bg-zinc-900/30 dark:hover:border-zinc-700">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        分类
+                      </p>
+                      <p
+                        className="mt-1.5 truncate font-medium text-zinc-900 dark:text-zinc-100"
+                        title={item.categoryName || item.category || "未分类"}
+                      >
+                        {item.categoryName || item.category || "未分类"}
+                      </p>
+                    </div>
+                    <div className="group flex flex-col rounded-xl border border-zinc-200/60 bg-white p-3.5 shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800/60 dark:bg-zinc-900/30 dark:hover:border-zinc-700">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        位置
+                      </p>
+                      <p
+                        className="mt-1.5 truncate font-medium text-zinc-900 dark:text-zinc-100"
+                        title={item.locationName || item.location || "未设置"}
+                      >
+                        {item.locationName || item.location || "未设置"}
+                      </p>
+                    </div>
+                    <div className="group flex flex-col rounded-xl border border-zinc-200/60 bg-white p-3.5 shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800/60 dark:bg-zinc-900/30 dark:hover:border-zinc-700">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        数量
+                      </p>
+                      <p className="mt-1.5 font-medium text-zinc-900 dark:text-zinc-100">
+                        {item.quantity} {item.unit}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Dates & Status List */}
+                  <div className="space-y-3.5">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      日期与状态
+                    </h4>
+                    <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200/60 bg-white shadow-sm dark:divide-zinc-800/60 dark:border-zinc-800/60 dark:bg-zinc-900/30">
+                      <div className="flex items-center justify-between p-3.5">
+                        <div className="flex items-center gap-2.5 text-zinc-500 dark:text-zinc-400">
+                          <CalendarDays className="h-4 w-4" />
+                          <span className="text-sm">生产日期</span>
+                        </div>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          {item.productionDate || "-"}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
-                        <Clock3 className="h-4 w-4 text-zinc-500" />
-                        <span>
-                          保质期：
+                      <div className="flex items-center justify-between p-3.5">
+                        <div className="flex items-center gap-2.5 text-zinc-500 dark:text-zinc-400">
+                          <Clock3 className="h-4 w-4" />
+                          <span className="text-sm">保质期</span>
+                        </div>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                           {item.shelfLifeDays
                             ? `${item.shelfLifeDays} 天`
                             : "-"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
-                        <Tag className="h-4 w-4 text-zinc-500" />
-                        <span>过期日期：{item.expiryDate || "-"}</span>
+                      <div className="flex items-center justify-between p-3.5">
+                        <div className="flex items-center gap-2.5 text-zinc-500 dark:text-zinc-400">
+                          <Tag className="h-4 w-4" />
+                          <span className="text-sm">过期日期</span>
+                        </div>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          {item.expiryDate || "-"}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
-                        <Package className="h-4 w-4 text-zinc-500" />
-                        <span>
-                          状态：
+                      <div className="flex items-center justify-between p-3.5">
+                        <div className="flex items-center gap-2.5 text-zinc-500 dark:text-zinc-400">
+                          <Package className="h-4 w-4" />
+                          <span className="text-sm">当前状态</span>
+                        </div>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                           {item.status === "active"
                             ? "在库"
                             : item.status === "consumed"
@@ -214,25 +262,32 @@ export function ItemDetailModal({
                         </span>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="rounded-lg border border-zinc-200/70 bg-zinc-50/80 p-3 dark:border-zinc-800/70 dark:bg-zinc-900/50">
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {/* Notes */}
+                  {item.notes ? (
+                    <div className="space-y-2.5">
+                      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                         备注
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-200">
-                        {item.notes || "暂无备注"}
+                      </h4>
+                      <p className="whitespace-pre-wrap rounded-xl bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-700 dark:bg-zinc-800/30 dark:text-zinc-300">
+                        {item.notes}
                       </p>
                     </div>
-                  </Card.Content>
-                </Card>
-              </div>
-            </Modal.Body>
+                  ) : null}
+                </Modal.Body>
 
-            <Modal.Footer>
-              <Button variant="secondary" onPress={() => onOpenChange(false)}>
-                关闭
-              </Button>
-            </Modal.Footer>
+                <div className="mt-8 flex justify-end mt-auto pt-4">
+                  <Button
+                    variant="secondary"
+                    className="px-6"
+                    onPress={() => onOpenChange(false)}
+                  >
+                    关闭
+                  </Button>
+                </div>
+              </div>
+            </div>
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>

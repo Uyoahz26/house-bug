@@ -23,7 +23,7 @@ interface NavItem {
 }
 
 const BASE_NAV_ITEMS: NavItem[] = [
-  { key: "dashboard", label: "Dashboard", icon: Home, href: "/dashboard" },
+  { key: "dashboard", label: "首页", icon: Home, href: "/dashboard" },
   { key: "inventory", label: "物资", icon: Package, href: "/items" },
 ];
 
@@ -119,7 +119,7 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
                 alt="HomeBug Logo"
                 width={20}
                 height={20}
-                className="h-5 w-5 dark:invert"
+                className="h-full w-full dark:invert"
                 priority
               />
             </div>
@@ -165,9 +165,9 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
               <Image
                 src="/logo.svg"
                 alt="HomeBug Logo"
-                width={18}
-                height={18}
-                className="h-[18px] w-[18px] dark:invert"
+                width={20}
+                height={20}
+                className="h-full w-full dark:invert"
                 priority
               />
             </div>
@@ -198,7 +198,7 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
               return (
                 <Button
                   key={item.key}
-                  variant="light"
+                  variant="outline"
                   onPress={() => router.push(item.href)}
                   className={`flex h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl border-none px-1 transition-all !min-w-0 ${
                     isActive
