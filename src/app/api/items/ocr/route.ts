@@ -101,6 +101,27 @@ function estimateBase64Bytes(base64: string): number {
   return Math.floor((normalized.length * 3) / 4) - padding;
 }
 
+function decodeBase64ToBytes(base64: string): Uint8Array<ArrayBufferLike> {
+  const normalized = base64.replace(/\s+/g, "");
+  if (!normalized) {
+    throw new Error("图片 base64 解码失败。");
+  }
+
+  let binary = "";
+  try {
+    binary = atob(normalized);
+  } catch {
+    throw new Error("图片 base64 解码失败。");
+  }
+
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
 function getWorkersAiBinding(): WorkersAiBinding {
   const { env } = getRequestContext();
   const ai = (env as Record<string, unknown>)?.AI;
@@ -149,6 +170,14 @@ function inferWorkerAiStatus(message: string): number {
     return 400;
   }
 
+  if (
+    lower.includes("tensor error") ||
+    lower.includes("decode u8") ||
+    lower.includes("invalid image")
+  ) {
+    return 400;
+  }
+
   return 502;
 }
 
@@ -162,8 +191,70 @@ function isWorkerAiLikeError(message: string): boolean {
     lower.includes("gateway") ||
     lower.includes("upstream") ||
     lower.includes("rate limit") ||
+    lower.includes("invalid image") ||
+    lower.includes("tensor error") ||
+    lower.includes("decode u8") ||
+    lower.includes("failed to decode")
+  );
+}
+
+function shouldRetryWithAnotherImageFormat(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("tensor error") ||
+    lower.includes("decode u8") ||
+    lower.includes("failed to decode") ||
     lower.includes("invalid image")
   );
+}
+
+async function runWorkersAiOcrWithFallback(
+  ai: WorkersAiBinding,
+  input: {
+    model: string;
+    prompt: string;
+    imageDataUrl: string;
+    imageBytes: Uint8Array<ArrayBufferLike>;
+  },
+): Promise<unknown> {
+  const candidates: Array<{
+    name: string;
+    image: string | Uint8Array | number[];
+  }> = [
+    { name: "data-url", image: input.imageDataUrl },
+    { name: "uint8array", image: input.imageBytes },
+    { name: "number-array", image: Array.from(input.imageBytes) },
+  ];
+
+  let lastError: unknown = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+
+    try {
+      return await withTimeout(
+        ai.run(input.model, {
+          image: candidate.image,
+          prompt: input.prompt,
+          max_tokens: 700,
+          temperature: 0,
+        }),
+        WORKER_OCR_TIMEOUT_MS,
+        "Worker OCR 请求超时，请稍后重试。",
+      );
+    } catch (error) {
+      lastError = error;
+      const message = getErrorMessage(error);
+      const isLast = index === candidates.length - 1;
+      if (isLast || !shouldRetryWithAnotherImageFormat(message)) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Worker OCR 调用失败。");
 }
 
 async function withTimeout<T>(
@@ -521,6 +612,7 @@ export async function POST(request: Request) {
     }
 
     let imageBytesLength = 0;
+    let imageBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
     let aiImageInput = "";
     try {
       const base64 = extractBase64Image(image);
@@ -529,6 +621,7 @@ export async function POST(request: Request) {
       if (!Number.isFinite(imageBytesLength) || imageBytesLength <= 0) {
         throw new Error("图片 base64 解码失败。");
       }
+      imageBytes = decodeBase64ToBytes(base64);
       aiImageInput = toDataUrl(image, base64);
     } catch (error) {
       return NextResponse.json(
@@ -554,17 +647,13 @@ export async function POST(request: Request) {
 
     const ai = getWorkersAiBinding();
 
-    const payload = await withTimeout(
-      ai.run(WORKER_OCR_MODEL, {
-        image: aiImageInput,
-        prompt:
-          '你是商品信息识别助手。请先识别图片中的文字，再只输出 JSON（不要 markdown、不要解释）。JSON 结构: {"name": string|null, "brand": string|null, "quantity": number|null, "itemUnit": string|null, "productionDate": "YYYY-MM-DD"|null, "shelfLife": number|null, "unit": "day"|"month"|"year"|null, "rawText": string}。若无法确定请用 null，日期必须是 YYYY-MM-DD。',
-        max_tokens: 700,
-        temperature: 0,
-      }),
-      WORKER_OCR_TIMEOUT_MS,
-      "Worker OCR 请求超时，请稍后重试。",
-    );
+    const payload = await runWorkersAiOcrWithFallback(ai, {
+      model: WORKER_OCR_MODEL,
+      imageDataUrl: aiImageInput,
+      imageBytes,
+      prompt:
+        '你是商品信息识别助手。请先识别图片中的文字，再只输出 JSON（不要 markdown、不要解释）。JSON 结构: {"name": string|null, "brand": string|null, "quantity": number|null, "itemUnit": string|null, "productionDate": "YYYY-MM-DD"|null, "shelfLife": number|null, "unit": "day"|"month"|"year"|null, "rawText": string}。若无法确定请用 null，日期必须是 YYYY-MM-DD。',
+    });
 
     const rawText = extractRawText(payload).trim();
     const extractedFromProvider = extractStructuredData(payload);
