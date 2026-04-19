@@ -26,7 +26,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await requireActiveUser(request);
+    await requireActiveUser(request);
     const { id } = await context.params;
 
     const body = (await request.json()) as UpdateStatusRequest;
@@ -37,18 +37,17 @@ export async function PATCH(
     }
 
     const db = getDb();
-    const current = await getItemById(db, user.id, id);
+    const current = await getItemById(db, id);
     if (!current) {
       return NextResponse.json({ error: "物资不存在。" }, { status: 404 });
     }
 
     await updateItemStatus(db, {
-      userId: user.id,
       id,
       status,
     });
 
-    const updated = await getItemById(db, user.id, id);
+    const updated = await getItemById(db, id);
     if (!updated) {
       return NextResponse.json({ error: "物资不存在。" }, { status: 404 });
     }

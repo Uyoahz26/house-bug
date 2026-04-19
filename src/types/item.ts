@@ -75,7 +75,6 @@ export interface CreateItemInput {
 }
 
 export interface UpdateItemInput {
-  userId: string;
   id: string;
   category: string | null;
   location: string | null;
@@ -100,7 +99,6 @@ export interface UpdateItemInput {
 export type ItemStatusFilter = ItemStatus | "all";
 
 export interface ListItemsFilter {
-  userId: string;
   search?: string;
   status?: ItemStatusFilter;
   limit: number;

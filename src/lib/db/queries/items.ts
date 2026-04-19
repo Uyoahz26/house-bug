@@ -15,12 +15,11 @@ interface ListQueryParts {
 }
 
 function buildListQueryParts(filter: {
-  userId: string;
   search?: string;
   status?: ItemStatusFilter;
 }): ListQueryParts {
-  const conditions: string[] = ["i.user_id = ?"];
-  const params: unknown[] = [filter.userId];
+  const conditions: string[] = [];
+  const params: unknown[] = [];
 
   if (filter.status && filter.status !== "all") {
     conditions.push("i.status = ?");
@@ -36,7 +35,7 @@ function buildListQueryParts(filter: {
   }
 
   return {
-    whereSql: `WHERE ${conditions.join(" AND ")}`,
+    whereSql: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "",
     params,
   };
 }
@@ -114,7 +113,6 @@ export async function listItems(
 export async function countItems(
   db: D1DatabaseLike,
   filter: {
-    userId: string;
     search?: string;
     status?: ItemStatusFilter;
   },
@@ -135,7 +133,6 @@ export async function countItems(
 
 export async function getItemById(
   db: D1DatabaseLike,
-  userId: string,
   id: string,
 ): Promise<ItemRecord | null> {
   return db
@@ -164,10 +161,10 @@ export async function getItemById(
          i.created_at,
          i.updated_at
        FROM items i
-       WHERE i.user_id = ? AND i.id = ?
+       WHERE i.id = ?
        LIMIT 1`,
     )
-    .bind(userId, id)
+    .bind(id)
     .first<ItemRecord>();
 }
 
@@ -251,7 +248,7 @@ export async function updateItem(
            status = ?,
            notes = ?,
            ocr_raw_text = ?
-       WHERE user_id = ? AND id = ?`,
+       WHERE id = ?`,
     )
     .bind(
       input.category,
@@ -272,7 +269,6 @@ export async function updateItem(
       input.status,
       input.notes,
       input.ocrRawText,
-      input.userId,
       input.id,
     )
     .run();
@@ -280,19 +276,14 @@ export async function updateItem(
 
 export async function deleteItem(
   db: D1DatabaseLike,
-  userId: string,
   id: string,
 ): Promise<void> {
-  await db
-    .prepare("DELETE FROM items WHERE user_id = ? AND id = ?")
-    .bind(userId, id)
-    .run();
+  await db.prepare("DELETE FROM items WHERE id = ?").bind(id).run();
 }
 
 export async function updateItemStatus(
   db: D1DatabaseLike,
   input: {
-    userId: string;
     id: string;
     status: ItemStatus;
   },
@@ -301,16 +292,15 @@ export async function updateItemStatus(
     .prepare(
       `UPDATE items
        SET status = ?
-       WHERE user_id = ? AND id = ?`,
+       WHERE id = ?`,
     )
-    .bind(input.status, input.userId, input.id)
+    .bind(input.status, input.id)
     .run();
 }
 
 export async function updateItemQuantity(
   db: D1DatabaseLike,
   input: {
-    userId: string;
     id: string;
     quantity: number;
   },
@@ -319,8 +309,8 @@ export async function updateItemQuantity(
     .prepare(
       `UPDATE items
        SET quantity = ?
-       WHERE user_id = ? AND id = ?`,
+       WHERE id = ?`,
     )
-    .bind(input.quantity, input.userId, input.id)
+    .bind(input.quantity, input.id)
     .run();
 }

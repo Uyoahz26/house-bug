@@ -118,6 +118,54 @@ class WorkerOcrTimeoutError extends Error {
   }
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "未知错误";
+}
+
+function inferWorkerAiStatus(message: string): number {
+  const lower = message.toLowerCase();
+
+  if (lower.includes("429") || lower.includes("rate limit")) {
+    return 429;
+  }
+
+  if (lower.includes("401") || lower.includes("403")) {
+    return 502;
+  }
+
+  if (lower.includes("timeout") || lower.includes("gateway")) {
+    return 504;
+  }
+
+  if (lower.includes("bad request") || lower.includes("400")) {
+    return 400;
+  }
+
+  return 502;
+}
+
+function isWorkerAiLikeError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("workers ai") ||
+    lower.includes("ai.run") ||
+    lower.includes("model") ||
+    lower.includes("neuron") ||
+    lower.includes("gateway") ||
+    lower.includes("upstream") ||
+    lower.includes("rate limit") ||
+    lower.includes("invalid image")
+  );
+}
+
 async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -460,6 +508,8 @@ function extractStructuredRawData(payload: unknown): AiExtractedRawData | null {
 }
 
 export async function POST(request: Request) {
+  let debugImageBytesLength = 0;
+
   try {
     await requireActiveUser(request);
 
@@ -475,6 +525,7 @@ export async function POST(request: Request) {
     try {
       const base64 = extractBase64Image(image);
       imageBytesLength = estimateBase64Bytes(base64);
+      debugImageBytesLength = imageBytesLength;
       if (!Number.isFinite(imageBytesLength) || imageBytesLength <= 0) {
         throw new Error("图片 base64 解码失败。");
       }
@@ -570,7 +621,30 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error("[POST /api/items/ocr]", error);
-    return NextResponse.json({ error: "OCR 识别失败。" }, { status: 500 });
+    const message = getErrorMessage(error);
+    if (isWorkerAiLikeError(message)) {
+      const status = inferWorkerAiStatus(message);
+      return NextResponse.json(
+        {
+          error: `Worker AI 调用失败：${message}`,
+          code: "WORKER_OCR_UPSTREAM_ERROR",
+        },
+        { status },
+      );
+    }
+
+    console.error("[POST /api/items/ocr]", {
+      error,
+      message,
+      model: WORKER_OCR_MODEL,
+      imageBytes: debugImageBytesLength,
+    });
+    return NextResponse.json(
+      {
+        error: `OCR 识别失败：${message}`,
+        code: "OCR_INTERNAL_ERROR",
+      },
+      { status: 500 },
+    );
   }
 }

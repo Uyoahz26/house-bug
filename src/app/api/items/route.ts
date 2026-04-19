@@ -95,7 +95,7 @@ function normalizeOptionalDays(value: unknown): number | null {
 
 export async function GET(request: Request) {
   try {
-    const user = await requireActiveUser(request);
+    await requireActiveUser(request);
     const db = getDb();
     await ensureItemDictionaryColumns(db);
 
@@ -122,14 +122,12 @@ export async function GET(request: Request) {
 
     const [rows, total] = await Promise.all([
       listItems(db, {
-        userId: user.id,
         search,
         status: statusParam,
         limit,
         offset,
       }),
       countItems(db, {
-        userId: user.id,
         search,
         status: statusParam,
       }),
@@ -235,7 +233,7 @@ export async function POST(request: Request) {
       ocrRawText: normalizeOptionalString(body.ocrRawText),
     });
 
-    const created = await getItemById(db, user.id, id);
+    const created = await getItemById(db, id);
     if (!created) {
       return NextResponse.json({ error: "创建物资失败。" }, { status: 500 });
     }

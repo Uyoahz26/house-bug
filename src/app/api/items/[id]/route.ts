@@ -95,12 +95,12 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await requireActiveUser(request);
+    await requireActiveUser(request);
     const { id } = await context.params;
 
     const db = getDb();
     await ensureItemDictionaryColumns(db);
-    const item = await getItemById(db, user.id, id);
+    const item = await getItemById(db, id);
     if (!item) {
       return NextResponse.json({ error: "物资不存在。" }, { status: 404 });
     }
@@ -121,14 +121,14 @@ export async function PUT(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await requireActiveUser(request);
+    await requireActiveUser(request);
     const { id } = await context.params;
 
     const body = (await request.json()) as UpdateItemRequest;
 
     const db = getDb();
     await ensureItemDictionaryColumns(db);
-    const current = await getItemById(db, user.id, id);
+    const current = await getItemById(db, id);
     if (!current) {
       return NextResponse.json({ error: "物资不存在。" }, { status: 404 });
     }
@@ -212,7 +212,6 @@ export async function PUT(
     }
 
     await updateItem(db, {
-      userId: user.id,
       id,
       category: nextCategory,
       location: nextLocation,
@@ -268,7 +267,7 @@ export async function PUT(
       }
     }
 
-    const updated = await getItemById(db, user.id, id);
+    const updated = await getItemById(db, id);
     if (!updated) {
       return NextResponse.json({ error: "物资不存在。" }, { status: 404 });
     }
@@ -295,7 +294,7 @@ export async function DELETE(
     const db = getDb();
     await ensureItemDictionaryColumns(db);
     await ensureItemDeleteAuditTable(db);
-    const current = await getItemById(db, user.id, id);
+    const current = await getItemById(db, id);
     if (!current) {
       return NextResponse.json({ error: "物资不存在。" }, { status: 404 });
     }
@@ -312,7 +311,7 @@ export async function DELETE(
       await deleteImageFromCosByUrl(db, current.image_url);
     }
 
-    await deleteItem(db, user.id, id);
+    await deleteItem(db, id);
 
     return NextResponse.json({ data: { id } });
   } catch (error) {

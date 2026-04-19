@@ -115,10 +115,10 @@ export function ItemDetailModal({
     <>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
         <Modal.Container placement="center" size={isDesktop ? "cover" : "full"}>
-          <Modal.Dialog className="max-h-[90vh] w-full overflow-hidden p-0 md:w-[60vw]">
+          <Modal.Dialog className="max-h-[100vh] w-full overflow-hidden p-0 md:w-[60vw]">
             <Modal.CloseTrigger className="absolute right-4 top-4 z-10 text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors" />
 
-            <div className="flex h-full max-h-[90vh] flex-col md:flex-row">
+            <div className="flex h-full max-h-[100vh] flex-col md:flex-row">
               {/* Left Column: Edge-to-edge image on mobile, full height on desktop */}
               <div className="relative flex min-h-[240px] w-full shrink-0 flex-col items-center justify-center bg-zinc-100/80 dark:bg-zinc-900/50 md:w-[40%]">
                 {item.imageUrl ? (
