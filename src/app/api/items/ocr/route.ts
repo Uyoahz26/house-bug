@@ -171,6 +171,15 @@ function inferWorkerAiStatus(message: string): number {
   }
 
   if (
+    lower.includes("oneof") ||
+    lower.includes("type mismatch") ||
+    lower.includes("required properties") ||
+    lower.includes("not met, 0 matches")
+  ) {
+    return 400;
+  }
+
+  if (
     lower.includes("tensor error") ||
     lower.includes("decode u8") ||
     lower.includes("invalid image")
@@ -194,7 +203,11 @@ function isWorkerAiLikeError(message: string): boolean {
     lower.includes("invalid image") ||
     lower.includes("tensor error") ||
     lower.includes("decode u8") ||
-    lower.includes("failed to decode")
+    lower.includes("failed to decode") ||
+    lower.includes("oneof") ||
+    lower.includes("type mismatch") ||
+    lower.includes("required properties") ||
+    lower.includes("not met, 0 matches")
   );
 }
 
@@ -204,7 +217,11 @@ function shouldRetryWithAnotherImageFormat(message: string): boolean {
     lower.includes("tensor error") ||
     lower.includes("decode u8") ||
     lower.includes("failed to decode") ||
-    lower.includes("invalid image")
+    lower.includes("invalid image") ||
+    lower.includes("oneof") ||
+    lower.includes("type mismatch") ||
+    lower.includes("required properties") ||
+    lower.includes("not met, 0 matches")
   );
 }
 
@@ -221,9 +238,9 @@ async function runWorkersAiOcrWithFallback(
     name: string;
     image: string | Uint8Array | number[];
   }> = [
-    { name: "data-url", image: input.imageDataUrl },
-    { name: "uint8array", image: input.imageBytes },
     { name: "number-array", image: Array.from(input.imageBytes) },
+    { name: "uint8array", image: input.imageBytes },
+    { name: "data-url", image: input.imageDataUrl },
   ];
 
   let lastError: unknown = null;
