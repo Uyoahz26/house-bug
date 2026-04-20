@@ -53,10 +53,11 @@ jobs:
             exit 1
           fi
 
-          cat > wrangler.ci.toml <<EOF
-          name = "homebug-ci"
+          cat > wrangler.toml <<EOF
+          name = "$CLOUDFLARE_PAGES_PROJECT"
           compatibility_date = "2024-04-18"
           compatibility_flags = ["nodejs_compat"]
+          pages_build_output_dir = ".vercel/output/static"
 
           [[d1_databases]]
           binding = "DB"
@@ -66,7 +67,7 @@ jobs:
           EOF
 
       - name: Apply D1 migrations (auto detect)
-        run: npx wrangler d1 migrations apply "$D1_DATABASE_NAME" --remote --config wrangler.ci.toml
+        run: npx wrangler d1 migrations apply "$D1_DATABASE_NAME" --remote
 
       - name: Ensure Pages project exists
         run: |
@@ -104,4 +105,4 @@ jobs:
           echo "Pages project created successfully."
 
       - name: Deploy Pages
-        run: npx wrangler pages deploy .vercel/output/static --project-name "$CLOUDFLARE_PAGES_PROJECT" --commit-dirty=true --config wrangler.ci.toml
+        run: npx wrangler pages deploy .vercel/output/static --project-name "$CLOUDFLARE_PAGES_PROJECT" --commit-dirty=true
