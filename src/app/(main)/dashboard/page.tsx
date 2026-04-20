@@ -75,6 +75,10 @@ export default function DashboardPage() {
   const [searchExpiry, setSearchExpiry] = useState("");
   const [filterExpiry, setFilterExpiry] = useState<ExpiryFilterType>("all");
 
+  function isAuthExpiredStatus(status: number): boolean {
+    return status === 401 || status === 403;
+  }
+
   useEffect(() => {
     async function init() {
       try {
@@ -82,6 +86,14 @@ export default function DashboardPage() {
           fetch("/api/auth/me"),
           fetch("/api/items"),
         ]);
+
+        if (
+          isAuthExpiredStatus(authRes.status) ||
+          isAuthExpiredStatus(itemsRes.status)
+        ) {
+          router.replace("/login?next=/dashboard");
+          return;
+        }
 
         if (authRes.ok) {
           const authData = (await authRes.json()) as {
@@ -105,7 +117,7 @@ export default function DashboardPage() {
     }
 
     void init();
-  }, []);
+  }, [router]);
 
   const activeItems = useMemo(
     () => items.filter((item) => item.status === "active"),
