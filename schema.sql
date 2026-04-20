@@ -76,6 +76,7 @@ INSERT OR IGNORE INTO system_config (key, value, description, category, is_secre
   -- Cron 配置
   ('cron.expression',        '0 1 * * *', '定时任务 Cron 表达式（UTC 时间）',    'cron', 0),
   ('cron.enabled',           '1',         '是否启用定时任务: 0 | 1',             'cron', 0),
+  ('cron.days_before',       '7',         '统一提醒范围（天）：会提醒 N 天内到期与已过期物资', 'cron', 0),
 
   -- 通用配置
   ('app.name',               'HomeBug',   '应用名称',                            'general', 0),

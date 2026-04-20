@@ -45,8 +45,20 @@ const DICTIONARY_DEFAULT_CONFIGS = [
   },
 ];
 
-async function ensureDictionaryDefaults(db: ReturnType<typeof getDb>) {
-  for (const item of DICTIONARY_DEFAULT_CONFIGS) {
+const CRON_DEFAULT_CONFIGS = [
+  {
+    key: "cron.days_before",
+    value: "7",
+    description: "统一提醒范围（天）：会提醒 N 天内到期与已过期物资",
+    category: "cron" as const,
+    isSecret: 0,
+  },
+];
+
+async function ensureConfigDefaults(db: ReturnType<typeof getDb>) {
+  const defaults = [...DICTIONARY_DEFAULT_CONFIGS, ...CRON_DEFAULT_CONFIGS];
+
+  for (const item of defaults) {
     await db
       .prepare(
         `INSERT OR IGNORE INTO system_config (key, value, description, category, is_secret)
@@ -87,7 +99,7 @@ export async function GET(request: Request) {
     }
 
     const db = getDb();
-    await ensureDictionaryDefaults(db);
+    await ensureConfigDefaults(db);
     const configs = await getSystemConfigs(db, category);
 
     return NextResponse.json({
@@ -121,6 +133,7 @@ export async function PUT(request: Request) {
     }
 
     const db = getDb();
+    await ensureConfigDefaults(db);
     const statements = [];
 
     for (const item of updates) {

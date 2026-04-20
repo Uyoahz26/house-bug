@@ -11,8 +11,9 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "db:migrate:local": "wrangler d1 execute homebug-db --local --file=./migrations/0001_initial.sql",
-    "db:migrate": "wrangler d1 execute homebug-db --remote --file=./migrations/0001_initial.sql"
+    "db:migrate:local": "wrangler d1 migrations apply homebug-db --local",
+    "db:migrate": "wrangler d1 migrations apply homebug-db --remote",
+    "db:migrate:status": "wrangler d1 migrations list homebug-db --remote"
   },
   "dependencies": {
     "@cloudflare/next-on-pages": "^1.13.16",

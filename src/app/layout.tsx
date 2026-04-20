@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { PwaRegister } from "@/components/providers/pwa-register";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HomeBug 小小虫",
-  description: "家庭物资库存管理 · 拍照录入 · 保质期追踪 · 过期提醒",
+  title: "HomeBug",
+  description: "囤囤鼠的日常生活",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#18181b",
+  appleWebApp: {
+    capable: true,
+    title: "HomeBug",
+    statusBarStyle: "default",
+  },
   icons: {
     icon: "/logo.svg",
     shortcut: "/logo.svg",
@@ -32,7 +40,10 @@ export default function RootLayout({
       lang="zh-CN"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <PwaRegister />
+        {children}
+      </body>
     </html>
   );
 }

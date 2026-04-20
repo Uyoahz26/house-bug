@@ -203,6 +203,14 @@ Build output directory: .vercel/output/static
 - `CLOUDFLARE_API_TOKEN`：Cloudflare API Token
 - `CLOUDFLARE_ACCOUNT_ID`：Cloudflare Account ID
 
+该工作流会在部署时自动执行 D1 迁移检测与应用：
+
+1. 构建 Pages 产物
+2. 运行 `wrangler d1 migrations apply homebug-db --remote`（仅执行未应用的迁移）
+3. 部署到 Cloudflare Pages
+
+只要新增 SQL 文件到 `migrations/` 并推送到 `main` 分支，部署时会自动检测并执行。
+
 ---
 
 ## 📜 开发脚本
