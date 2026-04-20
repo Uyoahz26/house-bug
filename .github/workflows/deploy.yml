@@ -21,6 +21,7 @@ jobs:
       D1_DATABASE_NAME: homebug-db
       CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
       CLOUDFLARE_PAGES_PROJECT: ${{ secrets.CLOUDFLARE_PAGES_PROJECT }}
+      COMPATIBILITY_DATE: 2024-04-18
 
     steps:
       - name: Checkout
@@ -94,7 +95,7 @@ jobs:
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H "Content-Type: application/json" \
             "$API_BASE" \
-            --data "{\"name\":\"$CLOUDFLARE_PAGES_PROJECT\",\"production_branch\":\"main\"}")
+            --data "{\"name\":\"$CLOUDFLARE_PAGES_PROJECT\",\"production_branch\":\"main\",\"deployment_configs\":{\"preview\":{\"compatibility_date\":\"$COMPATIBILITY_DATE\",\"compatibility_flags\":[\"nodejs_compat\"]},\"production\":{\"compatibility_date\":\"$COMPATIBILITY_DATE\",\"compatibility_flags\":[\"nodejs_compat\"]}}}")
 
           if [ "$CREATE_STATUS" != "200" ]; then
             echo "Failed to create Pages project (status=$CREATE_STATUS)."
@@ -103,6 +104,26 @@ jobs:
           fi
 
           echo "Pages project created successfully."
+
+      - name: Enforce Pages compatibility flags
+        run: |
+          set -e
+          API_BASE="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+
+          PATCH_STATUS=$(curl -sS -o /tmp/pages_project_patch.json -w "%{http_code}" \
+            -X PATCH \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            "$API_BASE/$CLOUDFLARE_PAGES_PROJECT" \
+            --data "{\"deployment_configs\":{\"preview\":{\"compatibility_date\":\"$COMPATIBILITY_DATE\",\"compatibility_flags\":[\"nodejs_compat\"]},\"production\":{\"compatibility_date\":\"$COMPATIBILITY_DATE\",\"compatibility_flags\":[\"nodejs_compat\"]}}}")
+
+          if [ "$PATCH_STATUS" != "200" ]; then
+            echo "Failed to enforce Pages compatibility flags (status=$PATCH_STATUS)."
+            cat /tmp/pages_project_patch.json
+            exit 1
+          fi
+
+          echo "Pages compatibility flags enforced: nodejs_compat"
 
       - name: Deploy Pages
         run: npx wrangler pages deploy .vercel/output/static --project-name "$CLOUDFLARE_PAGES_PROJECT" --commit-dirty=true
