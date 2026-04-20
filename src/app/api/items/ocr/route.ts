@@ -434,6 +434,67 @@ function extractJsonObjectFromText(
   return null;
 }
 
+function normalizeTextCandidate(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function extractTextFromUnknown(value: unknown, depth = 0): string | null {
+  if (depth > 4 || value === null || value === undefined) {
+    return null;
+  }
+
+  const direct = normalizeTextCandidate(value);
+  if (direct) {
+    return direct;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const extracted = extractTextFromUnknown(item, depth + 1);
+      if (extracted) {
+        return extracted;
+      }
+    }
+    return null;
+  }
+
+  if (typeof value !== "object") {
+    return null;
+  }
+
+  const objectValue = value as Record<string, unknown>;
+
+  const keyCandidates = [
+    objectValue.text,
+    objectValue.response,
+    objectValue.output_text,
+    objectValue.output,
+    objectValue.description,
+    objectValue.caption,
+    objectValue.content,
+    objectValue.answer,
+    objectValue.rawText,
+    objectValue.ocrText,
+    objectValue.message,
+    objectValue.result,
+    objectValue.data,
+  ];
+
+  for (const candidate of keyCandidates) {
+    const extracted = extractTextFromUnknown(candidate, depth + 1);
+    if (extracted) {
+      return extracted;
+    }
+  }
+
+  return null;
+}
+
 function extractRawText(payload: unknown): string {
   if (typeof payload === "string") {
     const jsonObject = extractJsonObjectFromText(payload);
@@ -444,6 +505,11 @@ function extractRawText(payload: unknown): string {
       }
     }
     return payload;
+  }
+
+  if (Array.isArray(payload)) {
+    const extracted = extractTextFromUnknown(payload);
+    return extracted ?? "";
   }
 
   if (!payload || typeof payload !== "object") {
@@ -457,11 +523,19 @@ function extractRawText(payload: unknown): string {
     objectPayload.text,
     objectPayload.ocrText,
     objectPayload.content,
+    objectPayload.description,
+    objectPayload.caption,
+    objectPayload.answer,
+    objectPayload.output_text,
+    objectPayload.output,
+    objectPayload.message,
+    objectPayload.result,
   ];
 
   for (const candidate of directCandidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
-      return candidate;
+    const extracted = extractTextFromUnknown(candidate);
+    if (extracted) {
+      return extracted;
     }
   }
 
@@ -473,13 +547,26 @@ function extractRawText(payload: unknown): string {
       objectData.text,
       objectData.ocrText,
       objectData.content,
+      objectData.description,
+      objectData.caption,
+      objectData.answer,
+      objectData.output_text,
+      objectData.output,
+      objectData.message,
+      objectData.result,
     ];
 
     for (const candidate of nestedCandidates) {
-      if (typeof candidate === "string" && candidate.trim()) {
-        return candidate;
+      const extracted = extractTextFromUnknown(candidate);
+      if (extracted) {
+        return extracted;
       }
     }
+  }
+
+  const fallback = extractTextFromUnknown(objectPayload);
+  if (fallback) {
+    return fallback;
   }
 
   return "";

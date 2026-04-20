@@ -41,8 +41,27 @@ jobs:
       - name: Build Cloudflare Pages output
         run: npm run build:pages
 
+      - name: Create Wrangler config for CI
+        run: |
+          set -e
+          if [ -z "$CLOUDFLARE_D1_DATABASE_ID" ]; then
+            echo "Missing required secret: CLOUDFLARE_D1_DATABASE_ID"
+            exit 1
+          fi
+
+          cat > wrangler.ci.toml <<EOF
+          name = "homebug-ci"
+          compatibility_date = "2024-04-18"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$D1_DATABASE_NAME"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          EOF
+
       - name: Apply D1 migrations (auto detect)
-        run: npx wrangler d1 migrations apply "$D1_DATABASE_NAME" --remote
+        run: npx wrangler d1 migrations apply "$D1_DATABASE_NAME" --remote --config wrangler.ci.toml
 
       - name: Deploy Pages
         run: npx wrangler pages deploy .vercel/output/static --project-name "$CLOUDFLARE_PAGES_PROJECT"
