@@ -228,10 +228,10 @@ export default function DashboardPage() {
           </div>
           <Button
             onPress={() => router.push("/items")}
-            variant="ghost"
-            className="flex h-9 w-fit items-center rounded-lg border border-zinc-200 bg-white px-3 text-[13px] font-medium text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            className="h-9 w-full bg-zinc-900 px-4 text-xs font-medium text-white shadow-lg shadow-zinc-900/10 transition-all hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] dark:bg-white dark:text-zinc-900 sm:w-auto sm:text-sm"
           >
-            所有物资 <ChevronRight className="ml-1 opacity-70" size={14} />
+            查看所有物资
+            <ChevronRight className="ml-1 h-3.5 w-3.5" />
           </Button>
         </header>
 
@@ -319,7 +319,7 @@ export default function DashboardPage() {
               </h2>
             </div>
 
-            <Card className="flex flex-col overflow-hidden border border-zinc-200/50 bg-white/60 shadow-sm backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/40">
+            <Card className="p-0 flex flex-col overflow-hidden border border-zinc-200/50 bg-white/60 shadow-sm backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/40">
               <div className="flex items-center gap-3 border-b border-zinc-200/40 bg-zinc-50/30 p-3 dark:border-zinc-800/40 dark:bg-zinc-900/20 sm:p-4">
                 <div className="relative flex-1">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5">
@@ -426,7 +426,7 @@ export default function DashboardPage() {
               </h2>
             </div>
 
-            <Card className="flex flex-col overflow-hidden border border-zinc-200/50 bg-white/60 shadow-sm backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/40">
+            <Card className="p-0 flex flex-col overflow-hidden border border-zinc-200/50 bg-white/60 shadow-sm backdrop-blur-xl dark:border-zinc-800/50 dark:bg-zinc-900/40">
               <div className="border-b border-zinc-200/40 bg-blue-50/20 p-3 dark:border-zinc-800/40 dark:bg-blue-900/10 sm:p-4 sm:pb-3.5">
                 <p className="flex items-center gap-1.5 text-[12px] font-medium tracking-wide text-blue-800/60 dark:text-blue-300">
                   <span className="relative flex h-2 w-2">

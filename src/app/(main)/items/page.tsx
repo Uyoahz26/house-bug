@@ -15,6 +15,7 @@ import {
   Select,
   Spinner,
   Table,
+  Tabs,
   TextArea,
   TextField,
 } from "@heroui/react";
@@ -1021,30 +1022,57 @@ export default function ItemsPage() {
           </form>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {(
-            [
-              ["all", "全部囤货"],
-              ["active", "正常"],
-              ["expired", "已过期"],
-              ["consumed", "已用光光"],
-              ["discarded", "已废弃"],
-            ] as const
-          ).map(([value, text]) => (
-            <Button
-              key={value}
-              size="sm"
-              onPress={() => setStatusFilter(value)}
-              className={`h-8 rounded-full px-3.5 text-[12px] font-medium transition-colors ${
-                statusFilter === value
-                  ? "bg-zinc-900 text-white shadow-sm dark:bg-white dark:text-black"
-                  : "border border-zinc-200/50 bg-white/50 text-zinc-600 backdrop-blur-md hover:bg-zinc-100 dark:border-zinc-800/50 dark:bg-zinc-900/50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              }`}
+        <Tabs
+          selectedKey={statusFilter}
+          onSelectionChange={(key) =>
+            setStatusFilter(key as typeof statusFilter)
+          }
+          className="w-fit"
+        >
+          <Tabs.ListContainer>
+            <Tabs.List
+              aria-label="物资状态筛选"
+              className="w-fit *:h-6 gap-1 rounded-full bg-zinc-100/80 p-1 backdrop-blur-md dark:bg-zinc-900/80"
             >
-              {text}
-            </Button>
-          ))}
-        </div>
+              <Tabs.Tab
+                id="all"
+                className="whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-600 data-[selected=true]:bg-white data-[selected=true]:text-zinc-900 data-[selected=true]:shadow-sm dark:text-zinc-400 dark:data-[selected=true]:bg-zinc-800 dark:data-[selected=true]:text-white sm:h-9 sm:px-4"
+              >
+                全部囤货
+                <Tabs.Indicator className="rounded-full bg-white shadow-sm dark:bg-zinc-800" />
+              </Tabs.Tab>
+              <Tabs.Tab
+                id="active"
+                className="whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-600 data-[selected=true]:bg-white data-[selected=true]:text-zinc-900 data-[selected=true]:shadow-sm dark:text-zinc-400 dark:data-[selected=true]:bg-zinc-800 dark:data-[selected=true]:text-white sm:h-9 sm:px-4"
+              >
+                正常
+                <Tabs.Indicator className="rounded-full bg-white shadow-sm dark:bg-zinc-800" />
+              </Tabs.Tab>
+
+              <Tabs.Tab
+                id="consumed"
+                className="whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-600 data-[selected=true]:bg-white data-[selected=true]:text-zinc-900 data-[selected=true]:shadow-sm dark:text-zinc-400 dark:data-[selected=true]:bg-zinc-800 dark:data-[selected=true]:text-white sm:h-9 sm:px-4"
+              >
+                用光光
+                <Tabs.Indicator className="rounded-full bg-white shadow-sm dark:bg-zinc-800" />
+              </Tabs.Tab>
+              <Tabs.Tab
+                id="expired"
+                className="whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-600 data-[selected=true]:bg-white data-[selected=true]:text-zinc-900 data-[selected=true]:shadow-sm dark:text-zinc-400 dark:data-[selected=true]:bg-zinc-800 dark:data-[selected=true]:text-white sm:h-9 sm:px-4"
+              >
+                已过期
+                <Tabs.Indicator className="rounded-full bg-white shadow-sm dark:bg-zinc-800" />
+              </Tabs.Tab>
+              <Tabs.Tab
+                id="discarded"
+                className="whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-600 data-[selected=true]:bg-white data-[selected=true]:text-zinc-900 data-[selected=true]:shadow-sm dark:text-zinc-400 dark:data-[selected=true]:bg-zinc-800 dark:data-[selected=true]:text-white sm:h-9 sm:px-4"
+              >
+                已废弃
+                <Tabs.Indicator className="rounded-full bg-white shadow-sm dark:bg-zinc-800" />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
+        </Tabs>
 
         {loading ? (
           <div className="flex h-40 items-center justify-center">

@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "dev:worker": "wrangler pages dev .vercel/output/static",
+    "prebuild": "node scripts/inject-sw-version.js",
     "build": "next build",
+    "prebuild:pages": "node scripts/inject-sw-version.js",
     "build:pages": "npx @cloudflare/next-on-pages",
     "deploy": "npm run build:pages && wrangler pages deploy .vercel/output/static",
     "start": "next start",
