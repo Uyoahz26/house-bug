@@ -74,7 +74,6 @@ export function InteractiveCharacters({
   // Peeking logic
   const [purplePeeking, setPurplePeeking] = useState(false);
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
     let timeoutId: NodeJS.Timeout;
 
     const schedulePeek = () => {
@@ -92,7 +91,7 @@ export function InteractiveCharacters({
       }
     };
 
-    intervalId = setInterval(() => {
+    const intervalId = setInterval(() => {
       if (passwordLen > 0 && showPassword && !purplePeeking) {
         schedulePeek();
       }
