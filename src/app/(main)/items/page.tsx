@@ -21,6 +21,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  BookmarkX,
   CheckCircle2,
   Clock,
   Eye,
@@ -41,7 +42,7 @@ import {
 import { ParsedOcrData, parseOCRText } from "@/lib/ocr/parse";
 import { compressImageToMaxBytes } from "@/lib/image/compress";
 
-type ItemStatus = "active" | "consumed" | "discarded";
+type ItemStatus = "active" | "consumed" | "discarded" | "expired";
 type ItemStatusFilter = ItemStatus | "all";
 type ItemFormMode = "create" | "edit";
 type ItemShelfLifeUnit = "day" | "week" | "month" | "year";
@@ -164,7 +165,8 @@ function getExpiryStatus(
 
 function getStatusText(status: ItemStatus): string {
   if (status === "active") return "正常";
-  if (status === "consumed") return "已消耗";
+  if (status === "consumed") return "用光光";
+  if (status === "expired") return "已过期";
   return "已废弃";
 }
 
@@ -867,9 +869,49 @@ export default function ItemsPage() {
     });
   }
 
+  async function discardItem(item: Item) {
+    if (item.status === "discarded") {
+      return;
+    }
+
+    const shouldDiscard = await confirm({
+      title: `废弃「${item.name}」？`,
+      description: "确认后该物资状态将更新为已废弃。",
+      confirmText: "确认废弃",
+      cancelText: "取消",
+      status: "danger",
+    });
+
+    if (!shouldDiscard) return;
+
+    await withItemBusyState(item.id, async () => {
+      const response = await fetch(`/api/items/${item.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "discarded" }),
+      });
+
+      const payload = (await response.json()) as ItemResponse;
+      if (!response.ok || !payload.data) {
+        setError(payload.error ?? "更新物资状态失败。");
+        return;
+      }
+
+      setItems((prev) =>
+        prev.map((current) =>
+          current.id === item.id ? (payload.data ?? current) : current,
+        ),
+      );
+
+      if (viewingItem?.id === item.id) {
+        setViewingItem(payload.data);
+      }
+    });
+  }
+
   return (
     <main className="px-5 py-6 sm:px-8 sm:py-8 lg:px-10">
-      <section className="mx-auto max-w-6xl space-y-6">
+      <section className="mx-auto max-w-6xl space-y-5">
         <header className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             囤囤鼠的库存
@@ -984,7 +1026,8 @@ export default function ItemsPage() {
             [
               ["all", "全部囤货"],
               ["active", "正常"],
-              ["consumed", "已消耗"],
+              ["expired", "已过期"],
+              ["consumed", "已用光光"],
               ["discarded", "已废弃"],
             ] as const
           ).map(([value, text]) => (
@@ -1083,31 +1126,43 @@ export default function ItemsPage() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 border-none px-2 text-[12px]"
+                                  className="h-7 text-[12px]"
                                   onPress={() => openViewModal(item)}
                                   isDisabled={isBusy}
                                 >
-                                  <Eye className="mr-1 h-3.5 w-3.5" />
+                                  <Eye />
                                   查看
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 border-none px-2 text-[12px]"
+                                  className="h-7 border-none text-[12px]"
                                   onPress={() => openEditModal(item)}
                                   isDisabled={isBusy}
                                 >
-                                  <Pencil className="mr-1 h-3.5 w-3.5" />
+                                  <Pencil />
                                   编辑
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 border-none px-2 text-[12px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  className="h-7 border-none text-[12px] text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                  onPress={() => void discardItem(item)}
+                                  isDisabled={
+                                    isBusy || item.status === "discarded"
+                                  }
+                                >
+                                  <BookmarkX />
+                                  废弃
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 border-none px-2 text-[12px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                                   onPress={() => void removeItem(item)}
                                   isDisabled={isBusy}
                                 >
-                                  <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                  <Trash2 />
                                   删除
                                 </Button>
                               </div>
@@ -1281,6 +1336,15 @@ export default function ItemsPage() {
                           isDisabled={isBusy}
                         >
                           <span>编辑</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 px-2 text-[12px]"
+                          onPress={() => void discardItem(item)}
+                          isDisabled={isBusy || item.status === "discarded"}
+                        >
+                          <span>废弃</span>
                         </Button>
                         <Button
                           size="sm"

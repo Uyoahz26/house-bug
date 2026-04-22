@@ -36,7 +36,12 @@ interface UpdateItemRequest {
   ocrRawText?: string | null;
 }
 
-const ITEM_STATUSES: ItemStatus[] = ["active", "consumed", "discarded"];
+const ITEM_STATUSES: ItemStatus[] = [
+  "active",
+  "consumed",
+  "discarded",
+  "expired",
+];
 
 function isItemStatus(value: string): value is ItemStatus {
   return ITEM_STATUSES.includes(value as ItemStatus);
@@ -157,7 +162,12 @@ export async function PUT(
         ? (body.unit ?? "").trim() || "个"
         : (current.unit ?? "个");
 
-    const nextStatus = body.status !== undefined ? body.status : current.status;
+    const requestedStatus =
+      body.status !== undefined ? body.status : current.status;
+    const nextStatus =
+      nextQuantity === 0 && requestedStatus !== "discarded"
+        ? "consumed"
+        : requestedStatus;
     if (!isItemStatus(nextStatus)) {
       return NextResponse.json({ error: "无效的状态值。" }, { status: 400 });
     }

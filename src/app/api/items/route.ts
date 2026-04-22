@@ -35,7 +35,12 @@ interface CreateItemRequest {
   ocrRawText?: string | null;
 }
 
-const ITEM_STATUSES: ItemStatus[] = ["active", "consumed", "discarded"];
+const ITEM_STATUSES: ItemStatus[] = [
+  "active",
+  "consumed",
+  "discarded",
+  "expired",
+];
 
 function isItemStatus(value: string): value is ItemStatus {
   return ITEM_STATUSES.includes(value as ItemStatus);
@@ -178,6 +183,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "无效的状态值。" }, { status: 400 });
     }
 
+    const normalizedStatus =
+      quantity === 0 && status !== "discarded" ? "consumed" : status;
+
     let category: string | null;
     let location: string | null;
     let purchasePrice: number | null;
@@ -228,7 +236,7 @@ export async function POST(request: Request) {
       purchasePrice,
       purchaseChannel: normalizeOptionalString(body.purchaseChannel),
       imageUrl: normalizeOptionalString(body.imageUrl),
-      status,
+      status: normalizedStatus,
       notes: normalizeOptionalString(body.notes),
       ocrRawText: normalizeOptionalString(body.ocrRawText),
     });

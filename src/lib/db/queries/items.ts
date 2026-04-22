@@ -68,6 +68,19 @@ export function toPublicItem(record: ItemRecord): PublicItem {
   };
 }
 
+export async function markExpiredItems(db: D1DatabaseLike): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE items
+       SET status = 'expired',
+           updated_at = datetime('now')
+       WHERE status = 'active'
+         AND expiry_date IS NOT NULL
+         AND date(expiry_date) < date('now')`,
+    )
+    .run();
+}
+
 export async function listItems(
   db: D1DatabaseLike,
   filter: ListItemsFilter,

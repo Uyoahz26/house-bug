@@ -6,6 +6,7 @@ import {
   getItemById,
   toPublicItem,
   updateItemQuantity,
+  updateItemStatus,
 } from "@/lib/db/queries/items";
 
 export const runtime = "edge";
@@ -57,6 +58,13 @@ export async function PATCH(
       id,
       quantity: nextQuantity,
     });
+
+    if (nextQuantity === 0 && current.status !== "discarded") {
+      await updateItemStatus(db, {
+        id,
+        status: "consumed",
+      });
+    }
 
     const updated = await getItemById(db, id);
     if (!updated) {

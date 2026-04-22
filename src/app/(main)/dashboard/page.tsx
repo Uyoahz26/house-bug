@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type ItemStatus = "active" | "consumed" | "discarded";
+type ItemStatus = "active" | "consumed" | "discarded" | "expired";
 type ExpiryFilterType = "all" | "warning" | "expired";
 
 interface Item {

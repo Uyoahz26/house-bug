@@ -1,4 +1,4 @@
-export type ItemStatus = "active" | "consumed" | "discarded";
+export type ItemStatus = "active" | "consumed" | "discarded" | "expired";
 
 export interface ItemRecord {
   id: string;

@@ -4,6 +4,7 @@ import { requireAdmin, ForbiddenError } from "@/lib/auth/authorization";
 import { AuthError } from "@/lib/auth/middleware";
 import { getDb } from "@/lib/db/client";
 import { getSystemConfigByKey } from "@/lib/db/queries/config";
+import { markExpiredItems } from "@/lib/db/queries/items";
 import {
   loadEmailProviderConfig,
   sendEmailWithProvider,
@@ -45,9 +46,37 @@ interface ReminderItemView {
   daysLeft: number | null;
 }
 
+const DAILY_EXPIRY_SYNC_KEY = "cron.expired_sync_last_date";
+
 function toBoolean(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   return normalized === "1" || normalized === "true";
+}
+
+function getUtcDateKey(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+async function ensureDailyExpiredStatusSync(db: ReturnType<typeof getDb>) {
+  const today = getUtcDateKey();
+  const lastSyncConfig = await getSystemConfigByKey(db, DAILY_EXPIRY_SYNC_KEY);
+
+  if (lastSyncConfig?.value === today) {
+    return;
+  }
+
+  await markExpiredItems(db);
+  await db
+    .prepare(
+      `INSERT INTO system_config (key, value, description, category, is_secret, updated_by)
+       VALUES (?, ?, ?, 'cron', 0, NULL)
+       ON CONFLICT(key) DO UPDATE SET
+         value = excluded.value,
+         updated_at = datetime('now'),
+         updated_by = NULL`,
+    )
+    .bind(DAILY_EXPIRY_SYNC_KEY, today, "兜底：过期状态最近同步日期（UTC）")
+    .run();
 }
 
 function isCronSecretAuthorized(request: Request): boolean {
@@ -396,7 +425,7 @@ function toHtmlSummary(input: {
     <!-- 头部横幅 -->
     <div style="background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%); padding: 40px 20px; text-align: center; position: relative;">
       <div style="margin-bottom: 20px;">
-        <img src="data:image/svg+xml;base64,\${iconBase64}" width="72" height="72" alt="HomeBug Logo" style="border-radius: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: #000;" />
+        <img src="data:image/svg+xml;base64,${iconBase64}" width="72" height="72" alt="HomeBug Logo" style="border-radius: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: #000;" />
       </div>
       <h2 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: 1px;">报～ 主公！</h2>
       <p style="margin: 12px 0 0 0; color: #a1a1aa; font-size: 15px;">属鼠前方急报，请速速定夺 📜</p>
@@ -405,48 +434,48 @@ function toHtmlSummary(input: {
     <!-- 主体内容 -->
     <div style="padding: 32px 24px;">
     
-    \${
+    ${
       input.expiredItems.length > 0
-        ? \`<div style="margin-bottom: 36px;">
+        ? `<div style="margin-bottom: 36px;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px dashed #fee2e2; padding-bottom: 12px;">
         <h3 style="margin: 0; font-size: 18px; color: #ef4444; font-weight: 800;">
           <span style="font-size: 22px; margin-right: 6px; vertical-align: middle;">💀</span> 臣妾做不到啊
         </h3>
-        <span style="background: #fef2f2; color: #ef4444; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 \${input.expiredItems.length} 项已凉透</span>
+        <span style="background: #fef2f2; color: #ef4444; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 ${input.expiredItems.length} 项已凉透</span>
       </div>
-      <div>\${renderExpired}</div>
-      \${input.expiredItems.length > 20 ? \`<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 \${input.expiredItems.length - 20} 个已凉透</div>\` : ""}
-    </div>\`
+      <div>${renderExpired}</div>
+      ${input.expiredItems.length > 20 ? `<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 ${input.expiredItems.length - 20} 个已凉透</div>` : ""}
+    </div>`
         : ""
     }
 
-    \${
+    ${
       input.expiringItems.length > 0
-        ? \`<div style="margin-bottom: 36px;">
+        ? `<div style="margin-bottom: 36px;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px dashed #fef3c7; padding-bottom: 12px;">
         <h3 style="margin: 0; font-size: 18px; color: #d97706; font-weight: 800;">
           <span style="font-size: 22px; margin-right: 6px; vertical-align: middle;">⏳</span> 留给它的时间不多了
         </h3>
-        <span style="background: #fffbeb; color: #d97706; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 \${input.expiringItems.length} 项临期</span>
+        <span style="background: #fffbeb; color: #d97706; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 ${input.expiringItems.length} 项临期</span>
       </div>
-      <div>\${renderExpiring}</div>
-      \${input.expiringItems.length > 20 ? \`<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 \${input.expiringItems.length - 20} 个小可怜</div>\` : ""}
-    </div>\`
+      <div>${renderExpiring}</div>
+      ${input.expiringItems.length > 20 ? `<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 ${input.expiringItems.length - 20} 个小可怜</div>` : ""}
+    </div>`
         : ""
     }
     
-    \${
+    ${
       input.lowStockItems.length > 0
-        ? \`<div style="margin-bottom: 20px;">
+        ? `<div style="margin-bottom: 20px;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px dashed #d1fae5; padding-bottom: 12px;">
         <h3 style="margin: 0; font-size: 18px; color: #059669; font-weight: 800;">
           <span style="font-size: 22px; margin-right: 6px; vertical-align: middle;">🛒</span> 粮草告急，买买买！
         </h3>
-        <span style="background: #ecfdf5; color: #059669; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 \${input.lowStockItems.length} 项快吃土了</span>
+        <span style="background: #ecfdf5; color: #059669; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 ${input.lowStockItems.length} 项快吃土了</span>
       </div>
-      <div>\${renderLowStock}</div>
-      \${input.lowStockItems.length > 20 ? \`<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 \${input.lowStockItems.length - 20} 种嗷嗷待哺</div>\` : ""}
-    </div>\`
+      <div>${renderLowStock}</div>
+      ${input.lowStockItems.length > 20 ? `<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 ${input.lowStockItems.length - 20} 种嗷嗷待哺</div>` : ""}
+    </div>`
         : ""
     }
     
@@ -555,6 +584,7 @@ async function runInventoryReminderJob(options?: {
   enforceCronExpression?: boolean;
 }) {
   const db = getDb();
+  await ensureDailyExpiredStatusSync(db);
   const [cronEnabledConfig, cronDaysBeforeConfig, cronExpressionConfig] =
     await Promise.all([
       getSystemConfigByKey(db, "cron.enabled"),

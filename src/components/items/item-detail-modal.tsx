@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Modal } from "@heroui/react";
 import { CalendarDays, Clock3, Eye, Package, Tag } from "lucide-react";
 
-export type DetailItemStatus = "active" | "consumed" | "discarded";
+export type DetailItemStatus = "active" | "consumed" | "discarded" | "expired";
 
 export interface DetailItem {
   id: string;
@@ -257,8 +257,10 @@ export function ItemDetailModal({
                           {item.status === "active"
                             ? "在库"
                             : item.status === "consumed"
-                              ? "已消耗"
-                              : "已废弃"}
+                              ? "已用光光"
+                              : item.status === "expired"
+                                ? "已过期"
+                                : "已废弃"}
                         </span>
                       </div>
                     </div>

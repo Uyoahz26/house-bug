@@ -1,4 +1,4 @@
-const CACHE_VERSION = "homebug-pwa-v1";
+const CACHE_VERSION = "homebug-pwa-v2";
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
@@ -35,6 +35,9 @@ self.addEventListener("fetch", (event) => {
 
     // Only cache same-origin requests for predictable behavior on Pages.
     if (url.origin !== self.location.origin) return;
+
+    // Never cache API responses; always let network handle them.
+    if (url.pathname.startsWith("/api/")) return;
 
     if (request.mode === "navigate") {
         event.respondWith(

@@ -15,7 +15,12 @@ interface UpdateStatusRequest {
   status?: ItemStatus;
 }
 
-const ITEM_STATUSES: ItemStatus[] = ["active", "consumed", "discarded"];
+const ITEM_STATUSES: ItemStatus[] = [
+  "active",
+  "consumed",
+  "discarded",
+  "expired",
+];
 
 function isItemStatus(value: string): value is ItemStatus {
   return ITEM_STATUSES.includes(value as ItemStatus);
