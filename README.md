@@ -23,20 +23,21 @@
 
 ## ✨ 功能特性
 
-| 功能                                          | 状态 |
-| --------------------------------------------- | ---- |
-| 用户登录（首登自动管理员）                    | 🚧   |
-| 物资 CRUD                                     | 🚧   |
-| 拍照 / 上传图片 OCR 识别                      | 🚧   |
-| 保质期自动计算                                | 🚧   |
-| 过期提醒（Cron + 浏览器通知）                 | 🚧   |
-| 数据总览 Dashboard                            | 🚧   |
-| 分类 & 位置管理                               | 🚧   |
-| 多存储后端（R2 / 腾讯 COS / 自定义）          | 🚧   |
-| 多 OCR 后端（Tesseract / PaddleOCR / 云 OCR） | 🚧   |
-| 暗黑模式                                      | 🚧   |
-| PWA（离线支持）                               | 🚧   |
-| CSV 导入/导出                                 | 🚧   |
+| 功能                                           | 状态 |
+| ---------------------------------------------- | ---- |
+| 用户登录（首登自动管理员）                     | 🚧   |
+| 物资 CRUD                                      | 🚧   |
+| 拍照 / 上传图片 OCR 识别                       | 🚧   |
+| **AI 智能识别（DeepSeek/豆包/OpenAI/Claude）** | ✅   |
+| 保质期自动计算                                 | 🚧   |
+| 过期提醒（Cron + 浏览器通知）                  | 🚧   |
+| 数据总览 Dashboard                             | 🚧   |
+| 分类 & 位置管理                                | 🚧   |
+| 多存储后端（R2 / 腾讯 COS / 自定义）           | 🚧   |
+| 多 OCR 后端（Tesseract / PaddleOCR / 云 OCR）  | 🚧   |
+| 暗黑模式                                       | 🚧   |
+| PWA（离线支持）                                | 🚧   |
+| CSV 导入/导出                                  | 🚧   |
 
 ---
 
@@ -169,11 +170,42 @@ bucket_name = "homebug-images"  # 你的 R2 存储桶名
 
 | 服务                          | 说明                                     |
 | ----------------------------- | ---------------------------------------- |
+| **AI 智能识别（推荐）**       | 支持 OpenAI、Anthropic、豆包等多模态模型 |
 | Tesseract.js（默认）          | 开源免费，前端本地识别                   |
 | PaddleOCR（可选）             | 开源方案，中文识别效果更强（建议自托管） |
 | Cloudflare Workers AI（可选） | 免费额度，云端识别                       |
 | 腾讯云 OCR                    | 中文识别效果更好，需腾讯云账号           |
 | 百度 OCR                      | 通用文字识别，需百度智能云账号           |
+
+**AI 智能识别配置步骤**：
+
+1. 进入 **设置 → 系统配置 → AI 配置**
+2. 开启 AI 功能
+3. 选择 AI 提供商（推荐 OpenAI gpt-4o-mini）
+4. 填写 API Key
+5. 保存配置
+
+⚠️ **注意**: DeepSeek 目前不支持图片识别，请使用 OpenAI、Anthropic 或豆包。
+
+💡 **国内用户推荐**：使用国内 AI 厂商更便宜、更快、识别更准确！
+
+- **阿里通义千问**：¥3/月（300次），比 OpenAI 便宜 54%
+- **MiniMax**：¥4.5/月（300次），性价比最高
+- **智谱 GLM**：新用户送 ¥18，免费试用
+
+📚 **完整文档导航**：[AI文档导航.md](./AI文档导航.md) - 快速找到你需要的文档
+
+🚀 **快速开始**：
+
+- [国内 AI 配置指南](./国内AI配置指南.md) 🔥 - 5 分钟完成配置
+- [AI 厂商快速参考](./AI厂商快速参考.md) - 配置速查表
+- [AI 配置故障排查](./AI配置故障排查.md) - 遇到问题？看这里
+
+📖 **详细文档**：
+
+- [AI 功能集成文档](./docs/AI_INTEGRATION.md) - 技术实现
+- [国内 AI 厂商完整指南](./docs/CHINA_AI_PROVIDERS.md) - 7 家厂商详细配置
+- [AI 厂商对比与选择](./AI_PROVIDER_COMPARISON.md)
 
 ---
 
@@ -233,14 +265,20 @@ npm run lint             # ESLint 检查
 
 ## 📚 文档
 
-| 文档                                                   | 描述                            |
-| ------------------------------------------------------ | ------------------------------- |
-| [docs/PRD.md](./docs/PRD.md)                           | 产品需求文档，功能点详细说明    |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)         | 技术架构，API 设计，目录结构    |
-| [docs/DATABASE.md](./docs/DATABASE.md)                 | 数据库表设计，字段说明          |
-| [docs/UI_DESIGN.md](./docs/UI_DESIGN.md)               | UI 设计规范，色彩系统，组件规范 |
-| [docs/VIBECODE_PROMPTS.md](./docs/VIBECODE_PROMPTS.md) | Vibecoding 提示词集合           |
-| [docs/ISSUE_LOG.md](./docs/ISSUE_LOG.md)               | 开发问题清单与决策记录          |
+| 文档                                                       | 描述                                 |
+| ---------------------------------------------------------- | ------------------------------------ |
+| [docs/PRD.md](./docs/PRD.md)                               | 产品需求文档，功能点详细说明         |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)             | 技术架构，API 设计，目录结构         |
+| [docs/DATABASE.md](./docs/DATABASE.md)                     | 数据库表设计，字段说明               |
+| [docs/UI_DESIGN.md](./docs/UI_DESIGN.md)                   | UI 设计规范，色彩系统，组件规范      |
+| [docs/AI_INTEGRATION.md](./docs/AI_INTEGRATION.md)         | **AI 功能集成文档，配置指南**        |
+| [国内AI配置指南.md](./国内AI配置指南.md) 🔥                | **国内 AI 厂商快速配置指南（推荐）** |
+| [docs/CHINA_AI_PROVIDERS.md](./docs/CHINA_AI_PROVIDERS.md) | **国内 AI 厂商完整配置文档**         |
+| [AI_PROVIDER_COMPARISON.md](./AI_PROVIDER_COMPARISON.md)   | **AI 厂商对比与选择指南**            |
+| [docs/NETWORK_ACCESS.md](./docs/NETWORK_ACCESS.md)         | **网络访问说明，中国大陆用户指南**   |
+| [docs/AI_ERRORS.md](./docs/AI_ERRORS.md)                   | AI 错误处理与解决方案                |
+| [docs/VIBECODE_PROMPTS.md](./docs/VIBECODE_PROMPTS.md)     | Vibecoding 提示词集合                |
+| [docs/ISSUE_LOG.md](./docs/ISSUE_LOG.md)                   | 开发问题清单与决策记录               |
 
 ---
 

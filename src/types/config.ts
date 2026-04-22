@@ -1,4 +1,10 @@
-export type ConfigCategory = "general" | "storage" | "ocr" | "email" | "cron";
+export type ConfigCategory =
+  | "general"
+  | "storage"
+  | "ocr"
+  | "email"
+  | "cron"
+  | "ai";
 
 export interface SystemConfigRecord {
   key: string;

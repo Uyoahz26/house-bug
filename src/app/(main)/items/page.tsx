@@ -102,7 +102,19 @@ interface UploadImageResponse {
 
 interface OcrResponse {
   data?: {
+    provider?: string;
     rawText?: string;
+    extracted?: {
+      name?: string | null;
+      brand?: string | null;
+      category?: string | null;
+      specification?: string | null;
+      quantity?: number | null;
+      itemUnit?: string | null;
+      manufacturer?: string | null;
+      barcode?: string | null;
+      notes?: string | null;
+    };
     parsed?: {
       productionDate?: string | null;
       shelfLife?: number | null;
@@ -561,11 +573,80 @@ export default function ItemsPage() {
     setSearchKeyword(searchInput.trim());
   }
 
-  function applyOcrResult(parsed: ParsedOcrData, rawText: string) {
+  function applyOcrResult(
+    parsed: ParsedOcrData,
+    rawText: string,
+    extracted?: {
+      name?: string | null;
+      brand?: string | null;
+      category?: string | null;
+      specification?: string | null;
+      quantity?: number | null;
+      itemUnit?: string | null;
+      manufacturer?: string | null;
+      barcode?: string | null;
+      notes?: string | null;
+    },
+  ) {
     setOcrRawText(rawText.trim());
 
     const parsedUnit = mapParsedUnitToFormUnit(parsed.unit);
 
+    // 应用 AI 提取的商品名称
+    if (extracted?.name && !editedFields.name && !formState.name) {
+      updateFormValue("name", extracted.name, "auto");
+    }
+
+    // 应用 AI 提取的品牌
+    if (extracted?.brand && !editedFields.brand && !formState.brand) {
+      updateFormValue("brand", extracted.brand, "auto");
+    }
+
+    // 应用 AI 提取的分类
+    if (
+      extracted?.category &&
+      !editedFields.categoryId &&
+      !formState.categoryId
+    ) {
+      updateFormValue("categoryId", extracted.category, "auto");
+    }
+
+    // 应用 AI 提取的厂家
+    if (
+      extracted?.manufacturer &&
+      !editedFields.manufacturer &&
+      !formState.manufacturer
+    ) {
+      updateFormValue("manufacturer", extracted.manufacturer, "auto");
+    }
+
+    // 应用 AI 提取的数量
+    if (
+      extracted?.quantity !== null &&
+      extracted?.quantity !== undefined &&
+      extracted.quantity > 0 &&
+      !editedFields.quantity &&
+      formState.quantity === 1
+    ) {
+      updateFormValue("quantity", extracted.quantity, "auto");
+    }
+
+    // 应用 AI 提取的单位
+    if (extracted?.itemUnit && !editedFields.unit) {
+      updateFormValue("unit", extracted.itemUnit, "auto");
+    }
+
+    // 应用 AI 提取的条形码
+    if (extracted?.barcode && !editedFields.barcode && !formState.barcode) {
+      updateFormValue("barcode", extracted.barcode, "auto");
+    }
+
+    // 应用 AI 提取的备注
+    if (extracted?.notes && !editedFields.notes && !formState.notes) {
+      updateFormValue("notes", extracted.notes, "auto");
+    }
+
+    // 应用生产日期
     if (
       parsed.productionDate &&
       !editedFields.productionDate &&
@@ -574,6 +655,7 @@ export default function ItemsPage() {
       updateFormValue("productionDate", parsed.productionDate, "auto");
     }
 
+    // 应用保质期数值
     if (
       parsed.shelfLife !== null &&
       parsed.shelfLife > 0 &&
@@ -583,6 +665,7 @@ export default function ItemsPage() {
       updateFormValue("shelfLifeValue", parsed.shelfLife, "auto");
     }
 
+    // 应用保质期单位
     if (
       parsed.shelfLife !== null &&
       parsed.shelfLife > 0 &&
@@ -595,6 +678,17 @@ export default function ItemsPage() {
   async function runServerOcr(base64Image: string): Promise<{
     parsed: ParsedOcrData;
     rawText: string;
+    extracted?: {
+      name?: string | null;
+      brand?: string | null;
+      category?: string | null;
+      specification?: string | null;
+      quantity?: number | null;
+      itemUnit?: string | null;
+      manufacturer?: string | null;
+      barcode?: string | null;
+      notes?: string | null;
+    };
     shouldFallbackToBrowser: boolean;
   }> {
     const response = await fetch("/api/items/ocr", {
@@ -630,6 +724,7 @@ export default function ItemsPage() {
             : null,
         unit: payload.data.parsed?.unit ?? null,
       },
+      extracted: payload.data.extracted,
       rawText: payload.data.rawText ?? "",
       shouldFallbackToBrowser: false,
     };
@@ -653,7 +748,11 @@ export default function ItemsPage() {
         const parsed = parseOCRText(browserText);
         applyOcrResult(parsed, browserText);
       } else {
-        applyOcrResult(serverResult.parsed, serverResult.rawText);
+        applyOcrResult(
+          serverResult.parsed,
+          serverResult.rawText,
+          serverResult.extracted,
+        );
       }
     } catch (ocrException) {
       const fallbackText = await runBrowserOcr(selectedImageFile);

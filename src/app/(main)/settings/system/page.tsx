@@ -22,10 +22,11 @@ import {
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type ConfigCategory = "general" | "storage" | "ocr" | "email" | "cron";
+type ConfigCategory = "general" | "storage" | "ocr" | "email" | "cron" | "ai";
 type UserRole = "admin" | "user";
 
 interface ConfigItem {
@@ -66,6 +67,7 @@ const CATEGORY_TABS = [
     icon: Settings2,
     desc: "应用基础参数与偏好",
   },
+  { id: "ai", label: "AI 配置", icon: Sparkles, desc: "AI 识别与智能功能" },
   { id: "storage", label: "存储配置", icon: HardDrive, desc: "本地与云端图床" },
   { id: "ocr", label: "OCR 配置", icon: ScanText, desc: "文字识别引擎参数" },
   { id: "email", label: "邮件配置", icon: Mail, desc: "提醒与通知发送参数" },
