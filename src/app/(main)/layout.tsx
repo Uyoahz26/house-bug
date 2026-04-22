@@ -174,7 +174,7 @@ function MainLayoutContent({ children }: { children: ReactNode }) {
         </Button>
       </aside>
 
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-200/50 bg-white/70 px-4 py-2 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-black/70 md:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-200/50 bg-white/70 px-4 py-1 backdrop-blur-xl dark:border-zinc-800/50 dark:bg-black/70 md:hidden">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-950">
             <Image

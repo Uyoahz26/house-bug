@@ -99,7 +99,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   </AlertDialog.Body>
                 ) : null}
 
-                <AlertDialog.Footer className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <AlertDialog.Footer className="flex-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button
                     variant="tertiary"
                     onPress={() => closeWithResult(false)}
