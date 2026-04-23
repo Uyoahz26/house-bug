@@ -9,6 +9,7 @@ import {
   loadEmailProviderConfig,
   sendEmailWithProvider,
 } from "@/lib/email/sender";
+import { getAiConfig, getAiAdapter } from "@/lib/ai";
 
 export const runtime = "edge";
 
@@ -44,6 +45,7 @@ interface ReminderItemView {
   unit: string;
   expiryDate: string | null;
   daysLeft: number | null;
+  aiTip?: string | null; // AI 生成的幽默提示
 }
 
 const DAILY_EXPIRY_SYNC_KEY = "cron.expired_sync_last_date";
@@ -239,6 +241,118 @@ function parseCronDaysBefore(value: string | null | undefined): number {
   return normalizeDaysBefore(parsed);
 }
 
+async function generateAiTipsForItems(
+  items: ReminderItemView[],
+  type: "expired" | "expiring" | "lowStock",
+): Promise<Map<string, string>> {
+  const tipsMap = new Map<string, string>();
+
+  if (items.length === 0) {
+    return tipsMap;
+  }
+
+  try {
+    const db = getDb();
+    const aiConfig = await getAiConfig(db);
+
+    if (!aiConfig) {
+      return tipsMap;
+    }
+
+    const adapter = getAiAdapter(aiConfig.provider);
+
+    // 批量生成提示，每次最多处理 10 个物品
+    const batchSize = 10;
+    const batches = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize));
+    }
+
+    for (const batch of batches) {
+      const itemDescriptions = batch
+        .map((item, idx) => {
+          const displayName = item.brand
+            ? `${item.brand} ${item.name}`
+            : item.name;
+          if (type === "expired") {
+            return `${idx + 1}. ${displayName}（已过期 ${Math.abs(item.daysLeft || 0)} 天，库存 ${item.quantity}${item.unit}）`;
+          } else if (type === "expiring") {
+            return `${idx + 1}. ${displayName}（还剩 ${item.daysLeft} 天过期，库存 ${item.quantity}${item.unit}）`;
+          } else {
+            return `${idx + 1}. ${displayName}（库存仅剩 ${item.quantity}${item.unit}）`;
+          }
+        })
+        .join("\n");
+
+      const typeDesc =
+        type === "expired"
+          ? "已经过期"
+          : type === "expiring"
+            ? "即将过期"
+            : "库存不足";
+
+      const prompt = `你是一个幽默风趣的家庭管家助手"囤囤鼠"。请为以下${typeDesc}的物品生成简短、幽默、有创意的提示文案。
+
+要求：
+1. 每个物品一句话，15-30字
+2. 要幽默、抽象、有梗，但不要太离谱
+3. 可以结合物品特性和使用场景
+4. 语气要轻松活泼，像朋友聊天
+5. 可以用网络流行语、谐音梗、夸张手法
+6. ${type === "expired" ? "对于过期物品，可以调侃但要提醒丢弃" : type === "expiring" ? "对于临期物品，鼓励尽快使用" : "对于缺货物品，提醒补货"}
+
+示例风格：
+- 洗发水快过期：现在可以一天洗三次头了，头皮SPA走起！
+- 牛奶库存不足：早餐没奶喝，只能干啃面包了🥖
+- 酱油已过期：这瓶酱油见证了你从单身到现在，该说再见了
+- 薯片临期：趁着还脆，赶紧消灭它！
+- 卫生纸缺货：再不囤货，就要用树叶了🍃
+
+物品列表：
+${itemDescriptions}
+
+请按以下格式输出（纯文本，每行一个序号和文案）：
+1. [第一个物品的文案]
+2. [第二个物品的文案]
+...`;
+
+      const response = await adapter.chat(
+        [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        aiConfig,
+      );
+
+      // 解析响应
+      const lines = response.content
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      lines.forEach((line) => {
+        const match = line.match(/^(\d+)\.\s*(.+)$/);
+        if (match) {
+          const idx = parseInt(match[1], 10) - 1;
+          const tip = match[2].trim();
+          if (idx >= 0 && idx < batch.length) {
+            const item = batch[idx];
+            const key = `${item.name}-${item.brand || ""}-${item.expiryDate || ""}-${item.quantity}`;
+            tipsMap.set(key, tip);
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error("[generateAiTipsForItems] AI 文案生成失败:", error);
+    // 静默失败，使用默认文案
+  }
+
+  return tipsMap;
+}
+
 function daysUntil(expiryDate: string | null): number | null {
   if (!expiryDate) return null;
 
@@ -262,7 +376,7 @@ function daysUntil(expiryDate: string | null): number | null {
 }
 
 function formatExpiryLine(item: ReminderItemView): string {
-  const displayName = item.brand ? `${item.brand} - ${item.name}` : item.name;
+  const displayName = item.brand ? `${item.brand} ${item.name}` : item.name;
   const dayText =
     item.daysLeft === null
       ? "未知"
@@ -272,58 +386,94 @@ function formatExpiryLine(item: ReminderItemView): string {
           ? "今天到期"
           : `剩余 ${item.daysLeft} 天`;
 
-  return `- ${displayName}（${dayText}，库存 ${item.quantity}${item.unit}）`;
+  const tip = item.aiTip ? `\n  💡 ${item.aiTip}` : "";
+  return `• ${displayName}\n  ${dayText} · 库存 ${item.quantity}${item.unit}${tip}`;
 }
 
 function formatStockLine(item: ReminderItemView): string {
-  const displayName = item.brand ? `${item.brand} - ${item.name}` : item.name;
-  return `- ${displayName}（库存 ${item.quantity}${item.unit}）`;
+  const displayName = item.brand ? `${item.brand} ${item.name}` : item.name;
+  const stockText =
+    item.quantity === 0 ? "已售罄" : `仅剩 ${item.quantity}${item.unit}`;
+  const tip = item.aiTip ? `\n  💡 ${item.aiTip}` : "";
+  return `• ${displayName}\n  ${stockText}${tip}`;
 }
 
 function formatExpiryHtml(item: ReminderItemView): string {
-  const displayName = item.brand ? `${item.brand} - ${item.name}` : item.name;
+  const displayName = item.brand ? `${item.brand} ${item.name}` : item.name;
+  const daysLeft = item.daysLeft ?? 0;
+
+  const isExpired = daysLeft < 0;
+  const statusColor = isExpired ? "#DC2626" : "#D97706";
+  const statusBg = isExpired ? "#FEE2E2" : "#FEF3C7";
+
   const dayText =
     item.daysLeft === null
-      ? "尊嘟假嘟？(时间倒流)"
-      : item.daysLeft < 0
-        ? `已凉透 ${Math.abs(item.daysLeft)} 天 🪦`
-        : item.daysLeft === 0
-          ? "就在今天！快吃快用！💥"
-          : `仅剩 ${item.daysLeft} 天 跑毒鸭 🏃`;
+      ? "未知"
+      : daysLeft < 0
+        ? `已过期 ${Math.abs(daysLeft)} 天`
+        : daysLeft === 0
+          ? "今天到期"
+          : `剩余 ${daysLeft} 天`;
 
-  const isExpired = item.daysLeft !== null && item.daysLeft < 0;
-  const tagColor = isExpired ? "#fef2f2" : "#fffbeb";
-  const tagBorder = isExpired ? "#fca5a5" : "#fde68a";
-  const tagText = isExpired ? "#ef4444" : "#d97706";
+  const aiTipHtml = item.aiTip
+    ? `<div style="margin-top: 8px; padding: 8px 12px; background: #F9FAFB; border-left: 2px solid #6B7280; border-radius: 4px;">
+         <p style="margin: 0; font-size: 13px; color: #6B7280; line-height: 1.5; font-style: italic;">💡 ${escapeHtml(item.aiTip)}</p>
+       </div>`
+    : "";
 
   return `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-      <div>
-        <div style="font-size: 15px; font-weight: 600; color: #3f3f46;">${escapeHtml(displayName)}</div>
-        <div style="font-size: 13px; color: #71717a; margin-top: 4px;">库存还有：<b style="color:#18181b;">${item.quantity}</b> ${escapeHtml(item.unit)}</div>
+    <div style="padding: 16px; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+        <div style="flex: 1; min-width: 0;">
+          <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600; color: #0A0A0A; line-height: 1.4;">
+            ${escapeHtml(displayName)}
+          </h4>
+          <p style="margin: 0; font-size: 13px; color: #6B7280;">
+            库存：<span style="font-weight: 500; color: #0A0A0A;">${item.quantity}</span> ${escapeHtml(item.unit)}
+          </p>
+        </div>
+        <div style="flex-shrink: 0;">
+          <span style="display: inline-block; padding: 4px 10px; background: ${statusBg}; color: ${statusColor}; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap;">
+            ${escapeHtml(dayText)}
+          </span>
+        </div>
       </div>
-      <div style="background-color: ${tagColor}; border: 1px solid ${tagBorder}; color: ${tagText}; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap;">
-        ${escapeHtml(dayText)}
-      </div>
+      ${aiTipHtml}
     </div>
   `.trim();
 }
 
 function formatStockHtml(item: ReminderItemView): string {
-  const displayName = item.brand ? `${item.brand} - ${item.name}` : item.name;
-  const showZero =
+  const displayName = item.brand ? `${item.brand} ${item.name}` : item.name;
+  const stockText =
     item.quantity === 0
-      ? "一滴都没了 🏜️"
-      : `只剩：${item.quantity} ${escapeHtml(item.unit)} 🤏`;
+      ? "已售罄"
+      : `仅剩 ${item.quantity} ${escapeHtml(item.unit)}`;
+
+  const aiTipHtml = item.aiTip
+    ? `<div style="margin-top: 8px; padding: 8px 12px; background: #F9FAFB; border-left: 2px solid #6B7280; border-radius: 4px;">
+         <p style="margin: 0; font-size: 13px; color: #6B7280; line-height: 1.5; font-style: italic;">💡 ${escapeHtml(item.aiTip)}</p>
+       </div>`
+    : "";
 
   return `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-      <div>
-        <div style="font-size: 15px; font-weight: 600; color: #3f3f46;">${escapeHtml(displayName)}</div>
+    <div style="padding: 16px; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+        <div style="flex: 1; min-width: 0;">
+          <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600; color: #0A0A0A; line-height: 1.4;">
+            ${escapeHtml(displayName)}
+          </h4>
+          <p style="margin: 0; font-size: 13px; color: #6B7280;">
+            需要补充库存
+          </p>
+        </div>
+        <div style="flex-shrink: 0;">
+          <span style="display: inline-block; padding: 4px 10px; background: #DCFCE7; color: #16A34A; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap;">
+            ${escapeHtml(stockText)}
+          </span>
+        </div>
       </div>
-      <div style="background-color: #ecfdf5; border: 1px solid #6ee7b7; color: #047857; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap;">
-        ${escapeHtml(showZero)}
-      </div>
+      ${aiTipHtml}
     </div>
   `.trim();
 }
@@ -336,59 +486,54 @@ function toTextSummary(input: {
   lowStockItems: ReminderItemView[];
 }): string {
   const lines: string[] = [
-    `报～ 主公 囤囤鼠传来物资急报！`,
-    "探子来报，以下库存有异动，请主公速速定夺：",
+    `${input.appName} 库存提醒`,
+    `${new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
     "",
   ];
 
   if (input.expiredItems.length > 0) {
-    lines.push(
-      `🚨 如果听一万遍反方向的钟可以回到过去的话，这些应该还有救。过期已凉透共 ${input.expiredItems.length} 项）：`,
-    );
+    lines.push(`【已过期】共 ${input.expiredItems.length} 项`);
+    lines.push("");
     input.expiredItems.slice(0, 20).forEach((item) => {
       lines.push(formatExpiryLine(item));
     });
     if (input.expiredItems.length > 20) {
-      lines.push(
-        `- 还有 ${input.expiredItems.length - 20} 项未能列出，请上前线查看。`,
-      );
+      lines.push(`... 还有 ${input.expiredItems.length - 20} 项未显示`);
     }
     lines.push("");
   }
 
   if (input.expiringItems.length > 0) {
-    lines.push(
-      `⏳ 留给它们的时间不多了！（${input.daysBefore} 天内临期，共 ${input.expiringItems.length} 项）：`,
-    );
+    lines.push(`【即将过期】共 ${input.expiringItems.length} 项`);
+    lines.push("");
     input.expiringItems.slice(0, 20).forEach((item) => {
       lines.push(formatExpiryLine(item));
     });
     if (input.expiringItems.length > 20) {
-      lines.push(
-        `- 还有 ${input.expiringItems.length - 20} 个小可怜，请上前线查看。`,
-      );
+      lines.push(`... 还有 ${input.expiringItems.length - 20} 项未显示`);
     }
     lines.push("");
   }
 
   if (input.lowStockItems.length > 0) {
-    lines.push(
-      `🛒 粮草告急，主公快囤囤囤！（需补充，共 ${input.lowStockItems.length} 项）：`,
-    );
+    lines.push(`【库存不足】共 ${input.lowStockItems.length} 项`);
+    lines.push("");
     input.lowStockItems.slice(0, 20).forEach((item) => {
       lines.push(formatStockLine(item));
     });
     if (input.lowStockItems.length > 20) {
-      lines.push(`- 还有 ${input.lowStockItems.length - 20} 条请上前线查看。`);
+      lines.push(`... 还有 ${input.lowStockItems.length - 20} 项未显示`);
     }
     lines.push("");
   }
 
-  lines.push(
-    "主公明鉴，为了保住奴才的脑袋，请速速查看处理！",
-    "",
-    "—— 您忠诚的囤囤鼠敬上",
-  );
+  lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  lines.push("");
+  lines.push("及时处理库存，避免浪费");
+  lines.push("");
+  lines.push(`${input.appName} · 自动提醒`);
 
   return lines.join("\n");
 }
@@ -400,97 +545,148 @@ function toHtmlSummary(input: {
   expiredItems: ReminderItemView[];
   lowStockItems: ReminderItemView[];
 }): string {
-  const iconBase64 =
-    "PHN2ZyB2aWV3Qm94PSIwIDAgMTI4IDEyOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkhvdXNlIEJ1ZyBsb2dvIG9wdGlvbiBDIj4KICA8cmVjdCB4PSIxMiIgeT0iMTIiIHdpZHRoPSIxMDQiIGhlaWdodD0iMTA0IiByeD0iMjYiIGZpbGw9IiMwMDAiLz4KICA8cGF0aCBkPSJNNjQgMzJMMzYgNTRWOTZIOTJWNTRMNjQgMzJaIiBmaWxsPSIjZmZmIi8+CiAgPHJlY3QgeD0iNDQiIHk9IjU2IiB3aWR0aD0iNDAiIGhlaWdodD0iMzYiIHJ4PSIxOCIgZmlsbD0iIzAwMCIvPgogIDxyZWN0IHg9IjYxIiB5PSI2MCIgd2lkdGg9IjYiIGhlaWdodD0iMjgiIHJ4PSIzIiBmaWxsPSIjZmZmIi8+CiAgPGNpcmNsZSBjeD0iNTQiIGN5PSI1MiIgcj0iMyIgZmlsbD0iIzAwMCIvPgogIDxjaXJjbGUgY3g9Ijc0IiBjeT0iNTIiIHI9IjMiIGZpbGw9IiMwMDAiLz4KPC9zdmc+";
-
   const renderExpired = input.expiredItems
     .slice(0, 20)
     .map((item) => formatExpiryHtml(item))
-    .join('<div style="height: 12px;"></div>');
+    .join('<div style="height: 8px;"></div>');
 
   const renderExpiring = input.expiringItems
     .slice(0, 20)
     .map((item) => formatExpiryHtml(item))
-    .join('<div style="height: 12px;"></div>');
+    .join('<div style="height: 8px;"></div>');
 
   const renderLowStock = input.lowStockItems
     .slice(0, 20)
     .map((item) => formatStockHtml(item))
-    .join('<div style="height: 12px;"></div>');
+    .join('<div style="height: 8px;"></div>');
+
+  const totalCount =
+    input.expiredItems.length +
+    input.expiringItems.length +
+    input.lowStockItems.length;
 
   return `
-<div style="font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f3f4f6; padding: 40px 20px; color: #1f2937;">
-  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); overflow: hidden;">
-    
-    <!-- 头部横幅 -->
-    <div style="background: linear-gradient(135deg, #18181b 0%, #3f3f46 100%); padding: 40px 20px; text-align: center; position: relative;">
-      <div style="margin-bottom: 20px;">
-        <img src="data:image/svg+xml;base64,${iconBase64}" width="72" height="72" alt="HomeBug Logo" style="border-radius: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: #000;" />
-      </div>
-      <h2 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800; letter-spacing: 1px;">报～ 主公！</h2>
-      <p style="margin: 12px 0 0 0; color: #a1a1aa; font-size: 15px;">属鼠前方急报，请速速定夺 📜</p>
-    </div>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${input.appName} 库存提醒</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background-color: #F9FAFB; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
   
-    <!-- 主体内容 -->
-    <div style="padding: 32px 24px;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 24px 16px;">
     
-    ${
-      input.expiredItems.length > 0
-        ? `<div style="margin-bottom: 36px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px dashed #fee2e2; padding-bottom: 12px;">
-        <h3 style="margin: 0; font-size: 18px; color: #ef4444; font-weight: 800;">
-          <span style="font-size: 22px; margin-right: 6px; vertical-align: middle;">💀</span> 臣妾做不到啊
-        </h3>
-        <span style="background: #fef2f2; color: #ef4444; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 ${input.expiredItems.length} 项已凉透</span>
+    <!-- 邮件容器 -->
+    <div style="background: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);">
+      
+      <!-- 头部 -->
+      <div style="background: linear-gradient(180deg, #0A0A0A 0%, #1A1A1A 100%); padding: 32px 24px; text-align: center;">
+        <div style="width: 48px; height: 48px; margin: 0 auto 16px; background: #FFFFFF; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          🐛
+        </div>
+        <h1 style="margin: 0 0 8px 0; color: #FFFFFF; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.3;">
+          ${input.appName} 库存提醒
+        </h1>
+        <p style="margin: 0; color: #9CA3AF; font-size: 14px; font-weight: 400;">
+          ${new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })} · 共 ${totalCount} 项需要关注
+        </p>
       </div>
-      <div>${renderExpired}</div>
-      ${input.expiredItems.length > 20 ? `<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 ${input.expiredItems.length - 20} 个已凉透</div>` : ""}
-    </div>`
-        : ""
-    }
-
-    ${
-      input.expiringItems.length > 0
-        ? `<div style="margin-bottom: 36px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px dashed #fef3c7; padding-bottom: 12px;">
-        <h3 style="margin: 0; font-size: 18px; color: #d97706; font-weight: 800;">
-          <span style="font-size: 22px; margin-right: 6px; vertical-align: middle;">⏳</span> 留给它的时间不多了
-        </h3>
-        <span style="background: #fffbeb; color: #d97706; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 ${input.expiringItems.length} 项临期</span>
+      
+      <!-- 主体内容 -->
+      <div style="padding: 24px;">
+        
+        ${
+          input.expiredItems.length > 0
+            ? `
+        <!-- 已过期物品 -->
+        <div style="margin-bottom: ${input.expiringItems.length > 0 || input.lowStockItems.length > 0 ? "32px" : "0"};">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #F3F4F6;">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #0A0A0A; display: flex; align-items: center; gap: 8px;">
+              <span style="display: inline-block; width: 3px; height: 16px; background: #DC2626; border-radius: 2px;"></span>
+              已过期
+            </h2>
+            <span style="background: #FEE2E2; color: #DC2626; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+              ${input.expiredItems.length} 项
+            </span>
+          </div>
+          <div>${renderExpired}</div>
+          ${input.expiredItems.length > 20 ? `<div style="margin-top: 12px; padding: 12px; background: #F9FAFB; border-radius: 8px; text-align: center; color: #6B7280; font-size: 13px;">还有 ${input.expiredItems.length - 20} 项未显示</div>` : ""}
+        </div>
+        `
+            : ""
+        }
+        
+        ${
+          input.expiringItems.length > 0
+            ? `
+        <!-- 即将过期物品 -->
+        <div style="margin-bottom: ${input.lowStockItems.length > 0 ? "32px" : "0"};">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #F3F4F6;">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #0A0A0A; display: flex; align-items: center; gap: 8px;">
+              <span style="display: inline-block; width: 3px; height: 16px; background: #D97706; border-radius: 2px;"></span>
+              即将过期
+            </h2>
+            <span style="background: #FEF3C7; color: #D97706; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+              ${input.expiringItems.length} 项
+            </span>
+          </div>
+          <div>${renderExpiring}</div>
+          ${input.expiringItems.length > 20 ? `<div style="margin-top: 12px; padding: 12px; background: #F9FAFB; border-radius: 8px; text-align: center; color: #6B7280; font-size: 13px;">还有 ${input.expiringItems.length - 20} 项未显示</div>` : ""}
+        </div>
+        `
+            : ""
+        }
+        
+        ${
+          input.lowStockItems.length > 0
+            ? `
+        <!-- 库存不足物品 -->
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #F3F4F6;">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #0A0A0A; display: flex; align-items: center; gap: 8px;">
+              <span style="display: inline-block; width: 3px; height: 16px; background: #16A34A; border-radius: 2px;"></span>
+              库存不足
+            </h2>
+            <span style="background: #DCFCE7; color: #16A34A; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;">
+              ${input.lowStockItems.length} 项
+            </span>
+          </div>
+          <div>${renderLowStock}</div>
+          ${input.lowStockItems.length > 20 ? `<div style="margin-top: 12px; padding: 12px; background: #F9FAFB; border-radius: 8px; text-align: center; color: #6B7280; font-size: 13px;">还有 ${input.lowStockItems.length - 20} 项未显示</div>` : ""}
+        </div>
+        `
+            : ""
+        }
+        
       </div>
-      <div>${renderExpiring}</div>
-      ${input.expiringItems.length > 20 ? `<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 ${input.expiringItems.length - 20} 个小可怜</div>` : ""}
-    </div>`
-        : ""
-    }
-    
-    ${
-      input.lowStockItems.length > 0
-        ? `<div style="margin-bottom: 20px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px dashed #d1fae5; padding-bottom: 12px;">
-        <h3 style="margin: 0; font-size: 18px; color: #059669; font-weight: 800;">
-          <span style="font-size: 22px; margin-right: 6px; vertical-align: middle;">🛒</span> 粮草告急，买买买！
-        </h3>
-        <span style="background: #ecfdf5; color: #059669; padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 700;">共 ${input.lowStockItems.length} 项快吃土了</span>
+      
+      <!-- 底部 -->
+      <div style="background: #F9FAFB; padding: 20px 24px; border-top: 1px solid #E5E7EB;">
+        <p style="margin: 0 0 12px 0; color: #6B7280; font-size: 13px; text-align: center; line-height: 1.5;">
+          及时处理库存，避免浪费
+        </p>
+        <div style="text-align: center;">
+          <a href="#" style="display: inline-block; background: #0A0A0A; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.2s;">
+            查看详情
+          </a>
+        </div>
+        <p style="margin: 16px 0 0 0; color: #9CA3AF; font-size: 12px; text-align: center;">
+          ${input.appName} · 自动提醒
+        </p>
       </div>
-      <div>${renderLowStock}</div>
-      ${input.lowStockItems.length > 20 ? `<div style="text-align: center; color: #71717a; font-size: 13px; margin-top: 16px; background: #f4f4f5; padding: 10px; border-radius: 8px; font-weight: 500;">👑 还有 ${input.lowStockItems.length - 20} 种嗷嗷待哺</div>` : ""}
-    </div>`
-        : ""
-    }
-    
+      
     </div>
-
-    <!-- 底部落款 -->
-    <div style="background: #fafafa; padding: 24px; text-align: center; border-top: 1px solid #f4f4f5;">
-      <p style="font-size: 14px; color: #71717a; margin: 0 0 12px 0; font-weight: 500;">主公明鉴，为了保住保洁部部长的脑袋，请速速处理！</p>
-      <div style="display: inline-block; background: #ffffff; padding: 8px 16px; border-radius: 99px; border: 1px solid #e4e4e7; font-size: 12px; color: #a1a1aa; font-weight: 600;">
-        🤖 您的忠诚属下：HomeBug囤囤鼠 自动敬上🙇‍♀️
-      </div>
+    
+    <!-- 邮件底部说明 -->
+    <div style="margin-top: 16px; text-align: center; color: #9CA3AF; font-size: 12px; line-height: 1.5;">
+      <p style="margin: 0;">这是一封自动发送的邮件，请勿直接回复</p>
     </div>
-
+    
   </div>
-</div>`.trim();
+  
+</body>
+</html>`.trim();
 }
 
 async function listCronUsers(): Promise<CronUserRecord[]> {
@@ -680,18 +876,41 @@ async function runInventoryReminderJob(options?: {
     };
   }
 
+  // 使用 AI 生成幽默文案
+  const [expiredTips, expiringTips, lowStockTips] = await Promise.all([
+    generateAiTipsForItems(expiredItems, "expired"),
+    generateAiTipsForItems(expiringItems, "expiring"),
+    generateAiTipsForItems(lowStockItems, "lowStock"),
+  ]);
+
+  // 将 AI 文案附加到物品上
+  expiredItems.forEach((item) => {
+    const key = `${item.name}-${item.brand || ""}-${item.expiryDate || ""}-${item.quantity}`;
+    item.aiTip = expiredTips.get(key) || null;
+  });
+
+  expiringItems.forEach((item) => {
+    const key = `${item.name}-${item.brand || ""}-${item.expiryDate || ""}-${item.quantity}`;
+    item.aiTip = expiringTips.get(key) || null;
+  });
+
+  lowStockItems.forEach((item) => {
+    const key = `${item.name}-${item.brand || ""}-${item.expiryDate || ""}-${item.quantity}`;
+    item.aiTip = lowStockTips.get(key) || null;
+  });
+
   const summarySubject: string[] = [];
   if (expiredItems.length > 0) {
-    summarySubject.push(`${expiredItems.length} 件已凉透`);
+    summarySubject.push(`${expiredItems.length} 项已过期`);
   }
   if (expiringItems.length > 0) {
-    summarySubject.push(`${expiringItems.length} 件要过期`);
+    summarySubject.push(`${expiringItems.length} 项即将过期`);
   }
   if (lowStockItems.length > 0) {
-    summarySubject.push(`${lowStockItems.length} 件该囤了`);
+    summarySubject.push(`${lowStockItems.length} 项库存不足`);
   }
 
-  const subject = `报～ 主公！${emailConfig.appName} 前方急报：${summarySubject.join("，")}！`;
+  const subject = `${emailConfig.appName} 库存提醒：${summarySubject.join("，")}`;
   const text = toTextSummary({
     appName: emailConfig.appName,
     daysBefore,
