@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { getAiConfig, getAiAdapter } from "@/lib/ai";
+import {
+  getAiConfig,
+  getAiAdapter,
+  type AiAdapter,
+  type AiConfig,
+  type AiMessage,
+} from "@/lib/ai";
 import { processNaturalLanguageQuery } from "@/lib/ai/features";
 import {
   listItems,
@@ -73,8 +79,8 @@ async function validateOpenClawToken(
  */
 async function parseInventoryAction(
   action: string,
-  adapter: any,
-  config: any,
+  adapter: AiAdapter,
+  config: AiConfig,
 ): Promise<{
   type: "decrease" | "increase" | "query";
   itemName: string;
@@ -98,7 +104,7 @@ async function parseInventoryAction(
 
 请解析这个指令。`;
 
-  const messages = [
+  const messages: AiMessage[] = [
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
   ];

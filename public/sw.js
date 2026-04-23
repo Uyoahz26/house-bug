@@ -1,7 +1,7 @@
 // 开发环境检测 - 如果是 localhost 或开发环境，禁用缓存
 const isDev = self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1";
 
-const CACHE_VERSION = "homebug-pwa-v3"; // 构建时自动更新
+const CACHE_VERSION = "homebug-pwa-1776933916733"; // 构建时自动更新
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 

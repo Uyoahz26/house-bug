@@ -565,13 +565,15 @@ export default function SystemConfigPage() {
                     ✨ 集成后可以做什么？
                   </p>
                   <ul className="list-inside list-disc space-y-1 pl-2">
-                    <li>对 OpenClaw 说"我用了一包纸"，自动减少库存</li>
-                    <li>询问"家里还有多少牛奶"，即时查询库存</li>
-                    <li>说"买了 5 个鸡蛋"，自动增加库存</li>
+                    <li>
+                      对 OpenClaw 说&quot;我用了一包纸&quot;，自动减少库存
+                    </li>
+                    <li>询问&quot;家里还有多少牛奶&quot;，即时查询库存</li>
+                    <li>说&quot;买了 5 个鸡蛋&quot;，自动增加库存</li>
                   </ul>
                   <p className="font-medium text-zinc-900">📋 配置步骤：</p>
                   <ol className="list-inside list-decimal space-y-1 pl-2">
-                    <li>点击下方"生成 API Token"按钮</li>
+                    <li>点击下方&quot;生成 API Token&quot;按钮</li>
                     <li>保存配置</li>
                     <li>
                       将{" "}
