@@ -17,6 +17,7 @@ import {
   Clock,
   HardDrive,
   Mail,
+  MessageSquare,
   ScanText,
   Send,
   Settings2,
@@ -26,7 +27,14 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type ConfigCategory = "general" | "storage" | "ocr" | "email" | "cron" | "ai";
+type ConfigCategory =
+  | "general"
+  | "storage"
+  | "ocr"
+  | "email"
+  | "cron"
+  | "ai"
+  | "openclaw";
 type UserRole = "admin" | "user";
 
 interface ConfigItem {
@@ -68,6 +76,12 @@ const CATEGORY_TABS = [
     desc: "应用基础参数与偏好",
   },
   { id: "ai", label: "AI 配置", icon: Sparkles, desc: "AI 识别与智能功能" },
+  {
+    id: "openclaw",
+    label: "OpenClaw",
+    icon: MessageSquare,
+    desc: "OpenClaw 助手集成",
+  },
   { id: "storage", label: "存储配置", icon: HardDrive, desc: "本地与云端图床" },
   { id: "ocr", label: "OCR 配置", icon: ScanText, desc: "文字识别引擎参数" },
   { id: "email", label: "邮件配置", icon: Mail, desc: "提醒与通知发送参数" },
@@ -152,6 +166,7 @@ export default function SystemConfigPage() {
   const [saving, setSaving] = useState(false);
   const [testEmailSending, setTestEmailSending] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState("");
+  const [generatingToken, setGeneratingToken] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -346,6 +361,32 @@ export default function SystemConfigPage() {
     }
   }
 
+  function generateApiToken() {
+    setGeneratingToken(true);
+    setError("");
+    setNotice("");
+
+    try {
+      // 生成一个安全的随机 token (32 字节 = 64 个十六进制字符)
+      const array = new Uint8Array(32);
+      crypto.getRandomValues(array);
+      const token = Array.from(array, (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("");
+
+      setDraft((prev) => ({
+        ...prev,
+        "openclaw.api_token": token,
+      }));
+
+      setNotice("已生成新的 API Token，请记得保存配置。");
+    } catch {
+      setError("生成 Token 失败。");
+    } finally {
+      setGeneratingToken(false);
+    }
+  }
+
   if (authLoading) {
     return (
       <main className="min-h-screen bg-zinc-50 px-4 py-8 text-zinc-900 sm:px-6 lg:px-8">
@@ -498,6 +539,59 @@ export default function SystemConfigPage() {
                     isDisabled={loading || testEmailTo.trim().length === 0}
                   >
                     {testEmailSending ? "发送中..." : "发送测试邮件"}
+                  </Button>
+                </div>
+              </Card.Content>
+            </Card>
+          ) : null}
+
+          {category === "openclaw" ? (
+            <Card className="border border-zinc-200 bg-white shadow-sm">
+              <Card.Content className="space-y-4 p-4 sm:p-5">
+                <div className="flex items-center gap-2 text-sm font-medium text-zinc-900">
+                  <MessageSquare className="h-4 w-4" />
+                  OpenClaw 集成配置
+                </div>
+
+                <div className="space-y-3 rounded-lg bg-zinc-50 p-4 text-xs leading-6 text-zinc-600">
+                  <p className="font-medium text-zinc-900">
+                    🤖 什么是 OpenClaw？
+                  </p>
+                  <p>
+                    OpenClaw 是一个开源的个人 AI 助手，可以连接到
+                    WhatsApp、Telegram、Slack 等多个消息平台。
+                  </p>
+                  <p className="font-medium text-zinc-900">
+                    ✨ 集成后可以做什么？
+                  </p>
+                  <ul className="list-inside list-disc space-y-1 pl-2">
+                    <li>对 OpenClaw 说"我用了一包纸"，自动减少库存</li>
+                    <li>询问"家里还有多少牛奶"，即时查询库存</li>
+                    <li>说"买了 5 个鸡蛋"，自动增加库存</li>
+                  </ul>
+                  <p className="font-medium text-zinc-900">📋 配置步骤：</p>
+                  <ol className="list-inside list-decimal space-y-1 pl-2">
+                    <li>点击下方"生成 API Token"按钮</li>
+                    <li>保存配置</li>
+                    <li>
+                      将{" "}
+                      <code className="rounded bg-zinc-200 px-1 py-0.5">
+                        openclaw-skills/homebug-inventory/SKILL.md
+                      </code>{" "}
+                      文件复制到 OpenClaw 的 skills 目录
+                    </li>
+                    <li>配置 OpenClaw 环境变量（详见 Skill 文件说明）</li>
+                  </ol>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    onPress={generateApiToken}
+                    isPending={generatingToken}
+                    isDisabled={loading}
+                  >
+                    {generatingToken ? "生成中..." : "生成 API Token"}
                   </Button>
                 </div>
               </Card.Content>

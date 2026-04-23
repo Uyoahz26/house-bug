@@ -4,7 +4,8 @@ export type ConfigCategory =
   | "ocr"
   | "email"
   | "cron"
-  | "ai";
+  | "ai"
+  | "openclaw";
 
 export interface SystemConfigRecord {
   key: string;

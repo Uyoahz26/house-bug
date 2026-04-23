@@ -29,6 +29,7 @@
 | 物资 CRUD                                      | 🚧   |
 | 拍照 / 上传图片 OCR 识别                       | 🚧   |
 | **AI 智能识别（DeepSeek/豆包/OpenAI/Claude）** | ✅   |
+| **OpenClaw 集成（自然语言管理库存）**          | ✅   |
 | 保质期自动计算                                 | 🚧   |
 | 过期提醒（Cron + 浏览器通知）                  | 🚧   |
 | 数据总览 Dashboard                             | 🚧   |
@@ -265,20 +266,21 @@ npm run lint             # ESLint 检查
 
 ## 📚 文档
 
-| 文档                                                       | 描述                                 |
-| ---------------------------------------------------------- | ------------------------------------ |
-| [docs/PRD.md](./docs/PRD.md)                               | 产品需求文档，功能点详细说明         |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)             | 技术架构，API 设计，目录结构         |
-| [docs/DATABASE.md](./docs/DATABASE.md)                     | 数据库表设计，字段说明               |
-| [docs/UI_DESIGN.md](./docs/UI_DESIGN.md)                   | UI 设计规范，色彩系统，组件规范      |
-| [docs/AI_INTEGRATION.md](./docs/AI_INTEGRATION.md)         | **AI 功能集成文档，配置指南**        |
-| [国内AI配置指南.md](./国内AI配置指南.md) 🔥                | **国内 AI 厂商快速配置指南（推荐）** |
-| [docs/CHINA_AI_PROVIDERS.md](./docs/CHINA_AI_PROVIDERS.md) | **国内 AI 厂商完整配置文档**         |
-| [AI_PROVIDER_COMPARISON.md](./AI_PROVIDER_COMPARISON.md)   | **AI 厂商对比与选择指南**            |
-| [docs/NETWORK_ACCESS.md](./docs/NETWORK_ACCESS.md)         | **网络访问说明，中国大陆用户指南**   |
-| [docs/AI_ERRORS.md](./docs/AI_ERRORS.md)                   | AI 错误处理与解决方案                |
-| [docs/VIBECODE_PROMPTS.md](./docs/VIBECODE_PROMPTS.md)     | Vibecoding 提示词集合                |
-| [docs/ISSUE_LOG.md](./docs/ISSUE_LOG.md)                   | 开发问题清单与决策记录               |
+| 文档                                                           | 描述                                      |
+| -------------------------------------------------------------- | ----------------------------------------- |
+| [docs/PRD.md](./docs/PRD.md)                                   | 产品需求文档，功能点详细说明              |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)                 | 技术架构，API 设计，目录结构              |
+| [docs/DATABASE.md](./docs/DATABASE.md)                         | 数据库表设计，字段说明                    |
+| [docs/UI_DESIGN.md](./docs/UI_DESIGN.md)                       | UI 设计规范，色彩系统，组件规范           |
+| [docs/AI_INTEGRATION.md](./docs/AI_INTEGRATION.md)             | **AI 功能集成文档，配置指南**             |
+| [docs/OPENCLAW_INTEGRATION.md](./docs/OPENCLAW_INTEGRATION.md) | **OpenClaw 集成指南（自然语言管理库存）** |
+| [国内AI配置指南.md](./国内AI配置指南.md) 🔥                    | **国内 AI 厂商快速配置指南（推荐）**      |
+| [docs/CHINA_AI_PROVIDERS.md](./docs/CHINA_AI_PROVIDERS.md)     | **国内 AI 厂商完整配置文档**              |
+| [AI_PROVIDER_COMPARISON.md](./AI_PROVIDER_COMPARISON.md)       | **AI 厂商对比与选择指南**                 |
+| [docs/NETWORK_ACCESS.md](./docs/NETWORK_ACCESS.md)             | **网络访问说明，中国大陆用户指南**        |
+| [docs/AI_ERRORS.md](./docs/AI_ERRORS.md)                       | AI 错误处理与解决方案                     |
+| [docs/VIBECODE_PROMPTS.md](./docs/VIBECODE_PROMPTS.md)         | Vibecoding 提示词集合                     |
+| [docs/ISSUE_LOG.md](./docs/ISSUE_LOG.md)                       | 开发问题清单与决策记录                    |
 
 ---
 

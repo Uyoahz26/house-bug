@@ -82,7 +82,8 @@ function isValidCategory(value: string): value is ConfigCategory {
     value === "ocr" ||
     value === "email" ||
     value === "cron" ||
-    value === "ai"
+    value === "ai" ||
+    value === "openclaw"
   );
 }
 
