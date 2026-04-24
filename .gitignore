@@ -52,3 +52,14 @@ coverage/
 # Misc
 *.pem
 .cache/
+openclaw-skills/ARCHITECTURE.md
+openclaw-skills/CONFIGURATION_GUIDE.md
+openclaw-skills/DEPLOYMENT_CHECKLIST.md
+openclaw-skills/HOW_TO_USE.md
+openclaw-skills/openclaw-config-example.json
+openclaw-skills/QUICKSTART.md
+openclaw-skills/README.md
+openclaw-skills/test-integration.sh
+openclaw-skills/USAGE_EXAMPLES.md
+openclaw-skills/homebug-inventory/README.md
+openclaw-skills/homebug-inventory/SKILL.md
