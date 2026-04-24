@@ -101,118 +101,6 @@ async function authorizeCronTrigger(request: Request): Promise<void> {
   await requireAdmin(request);
 }
 
-function normalizeCronValue(value: number, isDayOfWeek: boolean): number {
-  if (!isDayOfWeek) return value;
-  return value === 7 ? 0 : value;
-}
-
-function matchCronPart(
-  part: string,
-  value: number,
-  min: number,
-  max: number,
-  isDayOfWeek: boolean,
-): boolean {
-  const trimmed = part.trim();
-  if (!trimmed) return false;
-
-  const [rawBase, rawStep] = trimmed.split("/");
-  const step = rawStep ? Number.parseInt(rawStep, 10) : 1;
-  if (!Number.isFinite(step) || step <= 0) return false;
-
-  const base = rawBase ?? "*";
-
-  const isValueMatchBase = (candidate: number): boolean => {
-    const normalizedCandidate = normalizeCronValue(candidate, isDayOfWeek);
-    const normalizedValue = normalizeCronValue(value, isDayOfWeek);
-    return normalizedCandidate === normalizedValue;
-  };
-
-  if (base === "*") {
-    return (value - min) % step === 0;
-  }
-
-  if (base.includes("-")) {
-    const [startRaw, endRaw] = base.split("-");
-    const start = Number.parseInt(startRaw ?? "", 10);
-    const end = Number.parseInt(endRaw ?? "", 10);
-    if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
-
-    const normalizedStart = normalizeCronValue(start, isDayOfWeek);
-    const normalizedEnd = normalizeCronValue(end, isDayOfWeek);
-    const normalizedValue = normalizeCronValue(value, isDayOfWeek);
-
-    if (normalizedValue < normalizedStart || normalizedValue > normalizedEnd) {
-      return false;
-    }
-
-    return (normalizedValue - normalizedStart) % step === 0;
-  }
-
-  const exact = Number.parseInt(base, 10);
-  if (!Number.isFinite(exact)) return false;
-  if (step !== 1) return false;
-  return isValueMatchBase(exact);
-}
-
-function matchCronField(
-  field: string,
-  value: number,
-  min: number,
-  max: number,
-  isDayOfWeek = false,
-): boolean {
-  const tokens = field
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  if (tokens.length === 0) {
-    return false;
-  }
-
-  const normalizedValue = normalizeCronValue(value, isDayOfWeek);
-  if (normalizedValue < min || normalizedValue > max) {
-    return false;
-  }
-
-  return tokens.some((token) =>
-    matchCronPart(token, normalizedValue, min, max, isDayOfWeek),
-  );
-}
-
-function matchesCronExpressionUtc(expression: string, now: Date): boolean {
-  const fields = expression.trim().split(/\s+/).filter(Boolean);
-
-  if (fields.length !== 5) {
-    return false;
-  }
-
-  const [minuteField, hourField, dayField, monthField, weekField] = fields;
-
-  const minuteMatch = matchCronField(minuteField, now.getUTCMinutes(), 0, 59);
-  const hourMatch = matchCronField(hourField, now.getUTCHours(), 0, 23);
-  const monthMatch = matchCronField(monthField, now.getUTCMonth() + 1, 1, 12);
-  const dayMatch = matchCronField(dayField, now.getUTCDate(), 1, 31);
-  const weekMatch = matchCronField(weekField, now.getUTCDay(), 0, 6, true);
-
-  const dayWildcard = dayField.trim() === "*";
-  const weekWildcard = weekField.trim() === "*";
-
-  let dayOfMonthOrWeekMatch = false;
-  if (dayWildcard && weekWildcard) {
-    dayOfMonthOrWeekMatch = true;
-  } else if (dayWildcard) {
-    dayOfMonthOrWeekMatch = weekMatch;
-  } else if (weekWildcard) {
-    dayOfMonthOrWeekMatch = dayMatch;
-  } else {
-    dayOfMonthOrWeekMatch = dayMatch || weekMatch;
-  }
-
-  return minuteMatch && hourMatch && monthMatch && dayOfMonthOrWeekMatch;
-}
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -776,20 +664,17 @@ async function appendCronLog(input: {
     .run();
 }
 
-async function runInventoryReminderJob(options?: {
-  enforceCronExpression?: boolean;
-}) {
+async function runInventoryReminderJob() {
   const db = getDb();
   await ensureDailyExpiredStatusSync(db);
-  const [cronEnabledConfig, cronDaysBeforeConfig, cronExpressionConfig] =
-    await Promise.all([
-      getSystemConfigByKey(db, "cron.enabled"),
-      getSystemConfigByKey(db, "cron.days_before"),
-      getSystemConfigByKey(db, "cron.expression"),
-    ]);
+
+  const [cronEnabledConfig, cronDaysBeforeConfig] = await Promise.all([
+    getSystemConfigByKey(db, "cron.enabled"),
+    getSystemConfigByKey(db, "cron.days_before"),
+  ]);
+
   const cronEnabled = toBoolean(cronEnabledConfig?.value ?? "1");
   const daysBefore = parseCronDaysBefore(cronDaysBeforeConfig?.value);
-  const cronExpression = (cronExpressionConfig?.value ?? "0 1 * * *").trim();
 
   if (!cronEnabled) {
     await appendCronLog({
@@ -807,22 +692,6 @@ async function runInventoryReminderJob(options?: {
       notificationsSent: 0,
       errors: [] as string[],
     };
-  }
-
-  if (options?.enforceCronExpression) {
-    const shouldRunNow = matchesCronExpressionUtc(cronExpression, new Date());
-    if (!shouldRunNow) {
-      return {
-        skipped: true,
-        cronEnabled,
-        cronExpression,
-        skippedReason: "not_due",
-        usersChecked: 0,
-        itemsChecked: 0,
-        notificationsSent: 0,
-        errors: [] as string[],
-      };
-    }
   }
 
   const users = await listCronUsers();
@@ -980,9 +849,8 @@ export async function GET(request: Request) {
     await requireAdmin(request);
 
     const db = getDb();
-    const [cronEnabled, cronExpression, logsResult] = await Promise.all([
+    const [cronEnabled, logsResult] = await Promise.all([
       getSystemConfigByKey(db, "cron.enabled"),
-      getSystemConfigByKey(db, "cron.expression"),
       db
         .prepare(
           `SELECT id,
@@ -1003,7 +871,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       data: {
         cronEnabled: toBoolean(cronEnabled?.value ?? "1"),
-        cronExpression: cronExpression?.value ?? "0 1 * * *",
         logs: logsResult.results,
       },
     });
@@ -1028,13 +895,7 @@ export async function POST(request: Request) {
   try {
     await authorizeCronTrigger(request);
 
-    const url = new URL(request.url);
-    const autoMode =
-      isCronSecretAuthorized(request) && url.searchParams.get("auto") === "1";
-
-    const result = await runInventoryReminderJob({
-      enforceCronExpression: autoMode,
-    });
+    const result = await runInventoryReminderJob();
     return NextResponse.json({ data: result });
   } catch (error) {
     if (error instanceof AuthError) {

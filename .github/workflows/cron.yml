@@ -2,8 +2,8 @@ name: Cron Job - SendMail
 
 on:
   schedule:
-    # 每天 UTC 1:00 执行（北京时间 9:00）
-    - cron: "15 11 * * 5"
+    # 每周五 UTC 03:30 执行（北京时间周五 11:30）
+    - cron: "30 3 * * 5"
   # 允许手动触发
   workflow_dispatch:
 
