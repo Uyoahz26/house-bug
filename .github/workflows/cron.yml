@@ -2,14 +2,19 @@ name: Cron Job - SendMail
 
 on:
   schedule:
-    # 每周五 UTC 03:30 执行（北京时间周五 11:30）
-    - cron: "30 3 * * 5"
+    # 每周五 UTC 05:30 执行（北京时间周五 13:30）
+    # 注意：GitHub Actions scheduled workflows 可能会延迟 3-15 分钟
+    - cron: "30 5 * * 5"
   # 允许手动触发
   workflow_dispatch:
 
 jobs:
   trigger-cron:
     runs-on: ubuntu-latest
+
+    # 添加权限配置
+    permissions:
+      contents: read
 
     steps:
       - name: 触发库存提醒
@@ -18,6 +23,21 @@ jobs:
           PAGES_URL: ${{ secrets.PAGES_URL }}
         run: |
           echo "开始触发库存提醒任务..."
+          echo "当前时间: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "北京时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S CST')"
+
+          # 检查必需的环境变量
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ 错误：CRON_SECRET 未配置"
+            exit 1
+          fi
+
+          if [ -z "$PAGES_URL" ]; then
+            echo "❌ 错误：PAGES_URL 未配置"
+            exit 1
+          fi
+
+          echo "目标 URL: $PAGES_URL/api/cron"
 
           response=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Content-Type: application/json" \
