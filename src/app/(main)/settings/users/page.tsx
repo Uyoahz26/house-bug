@@ -23,6 +23,15 @@ interface UserItem {
   createdAt: string;
 }
 
+function getQQAvatar(email: string): string | null {
+  const match = email.match(/^(\d+)@qq\.com$/i);
+  if (match) {
+    const qqNumber = match[1];
+    return `https://q1.qlogo.cn/g?b=qq&nk=${qqNumber}&s=100`;
+  }
+  return null;
+}
+
 interface UsersResponse {
   data?: UserItem[];
   error?: string;
@@ -48,6 +57,7 @@ export default function SettingsUsersPage() {
         isAdmin: boolean;
         isActive: boolean;
         notifyEmail: boolean;
+        newPassword: string;
       }
     >
   >({});
@@ -79,6 +89,7 @@ export default function SettingsUsersPage() {
           isAdmin: boolean;
           isActive: boolean;
           notifyEmail: boolean;
+          newPassword: string;
         }
       > = {};
       for (const user of payload.data) {
@@ -88,6 +99,7 @@ export default function SettingsUsersPage() {
           isAdmin: user.role === "admin",
           isActive: user.isActive,
           notifyEmail: user.notifyEmail,
+          newPassword: "",
         };
       }
       setEditingUsers(nextEditing);
@@ -144,6 +156,7 @@ export default function SettingsUsersPage() {
           isAdmin: createdUser.role === "admin",
           isActive: createdUser.isActive,
           notifyEmail: createdUser.notifyEmail,
+          newPassword: "",
         },
       }));
     } catch {
@@ -161,7 +174,8 @@ export default function SettingsUsersPage() {
       editing.username.trim() !== user.username ||
       editing.isAdmin !== (user.role === "admin") ||
       editing.isActive !== user.isActive ||
-      editing.notifyEmail !== user.notifyEmail
+      editing.notifyEmail !== user.notifyEmail ||
+      editing.newPassword.trim() !== ""
     );
   }
 
@@ -173,16 +187,29 @@ export default function SettingsUsersPage() {
     setSavingById((prev) => ({ ...prev, [user.id]: true }));
 
     try {
+      const body: {
+        email: string;
+        username: string;
+        role: "admin" | "user";
+        isActive: boolean;
+        notifyEmail: boolean;
+        newPassword?: string;
+      } = {
+        email: editing.email,
+        username: editing.username,
+        role: editing.isAdmin ? "admin" : "user",
+        isActive: editing.isActive,
+        notifyEmail: editing.notifyEmail,
+      };
+
+      if (editing.newPassword.trim() !== "") {
+        body.newPassword = editing.newPassword;
+      }
+
       const response = await fetch(`/api/admin/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: editing.email,
-          username: editing.username,
-          role: editing.isAdmin ? "admin" : "user",
-          isActive: editing.isActive,
-          notifyEmail: editing.notifyEmail,
-        }),
+        body: JSON.stringify(body),
       });
 
       const payload = (await response.json()) as {
@@ -209,6 +236,7 @@ export default function SettingsUsersPage() {
           isAdmin: updatedUser.role === "admin",
           isActive: updatedUser.isActive,
           notifyEmail: updatedUser.notifyEmail,
+          newPassword: "",
         },
       }));
     } catch {
@@ -322,7 +350,12 @@ export default function SettingsUsersPage() {
                     <Card.Content className="space-y-4">
                       <div className="flex items-center gap-3">
                         <Avatar size="sm">
-                          {user.avatarUrl ? (
+                          {getQQAvatar(user.email) ? (
+                            <Avatar.Image
+                              alt={user.username}
+                              src={getQQAvatar(user.email)!}
+                            />
+                          ) : user.avatarUrl ? (
                             <Avatar.Image
                               alt={user.username}
                               src={user.avatarUrl}
@@ -354,6 +387,7 @@ export default function SettingsUsersPage() {
                                     isAdmin: user.role === "admin",
                                     isActive: user.isActive,
                                     notifyEmail: user.notifyEmail,
+                                    newPassword: "",
                                   }),
                                   username: event.target.value,
                                 },
@@ -378,8 +412,37 @@ export default function SettingsUsersPage() {
                                     isAdmin: user.role === "admin",
                                     isActive: user.isActive,
                                     notifyEmail: user.notifyEmail,
+                                    newPassword: "",
                                   }),
                                   email: event.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+
+                        <div className="grid gap-1 sm:col-span-2">
+                          <Label htmlFor={`password-${user.id}`}>
+                            新密码（留空则不修改）
+                          </Label>
+                          <Input
+                            id={`password-${user.id}`}
+                            type="password"
+                            placeholder="至少 6 位"
+                            value={editingUsers[user.id]?.newPassword ?? ""}
+                            onChange={(event) =>
+                              setEditingUsers((prev) => ({
+                                ...prev,
+                                [user.id]: {
+                                  ...(prev[user.id] ?? {
+                                    email: user.email,
+                                    username: user.username,
+                                    isAdmin: user.role === "admin",
+                                    isActive: user.isActive,
+                                    notifyEmail: user.notifyEmail,
+                                    newPassword: "",
+                                  }),
+                                  newPassword: event.target.value,
                                 },
                               }))
                             }
@@ -401,6 +464,7 @@ export default function SettingsUsersPage() {
                                     isAdmin: user.role === "admin",
                                     isActive: user.isActive,
                                     notifyEmail: user.notifyEmail,
+                                    newPassword: "",
                                   }),
                                   isAdmin: selected,
                                 },
@@ -427,6 +491,7 @@ export default function SettingsUsersPage() {
                                     isAdmin: user.role === "admin",
                                     isActive: user.isActive,
                                     notifyEmail: user.notifyEmail,
+                                    newPassword: "",
                                   }),
                                   isActive: selected,
                                 },
@@ -459,6 +524,7 @@ export default function SettingsUsersPage() {
                                     isAdmin: user.role === "admin",
                                     isActive: user.isActive,
                                     notifyEmail: user.notifyEmail,
+                                    newPassword: "",
                                   }),
                                   notifyEmail: selected,
                                 },
