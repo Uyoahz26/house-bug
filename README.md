@@ -29,6 +29,7 @@
 | 物资 CRUD                                      | 🚧   |
 | 拍照 / 上传图片 OCR 识别                       | 🚧   |
 | **AI 智能识别（DeepSeek/豆包/OpenAI/Claude）** | ✅   |
+| **AI 智能邮件文案（幽默提示）**                | ✅   |
 | **OpenClaw 集成（自然语言管理库存）**          | ✅   |
 | 保质期自动计算                                 | 🚧   |
 | 过期提醒（Cron + 浏览器通知）                  | 🚧   |
@@ -196,7 +197,7 @@ bucket_name = "homebug-images"  # 你的 R2 存储桶名
 
 📚 **完整文档导航**：[AI文档导航.md](./AI文档导航.md) - 快速找到你需要的文档
 
-🚀 **快速开始**：
+📚 **快速开始**：
 
 - [国内 AI 配置指南](./国内AI配置指南.md) 🔥 - 5 分钟完成配置
 - [AI 厂商快速参考](./AI厂商快速参考.md) - 配置速查表
@@ -205,6 +206,7 @@ bucket_name = "homebug-images"  # 你的 R2 存储桶名
 📖 **详细文档**：
 
 - [AI 功能集成文档](./docs/AI_INTEGRATION.md) - 技术实现
+- [AI 智能邮件文案](./docs/AI_EMAIL_TIPS.md) 🎭 - 幽默提示功能
 - [国内 AI 厂商完整指南](./docs/CHINA_AI_PROVIDERS.md) - 7 家厂商详细配置
 - [AI 厂商对比与选择](./AI_PROVIDER_COMPARISON.md)
 
@@ -246,6 +248,53 @@ Build output directory: .vercel/output/static
 
 ---
 
+## ⏰ 定时任务配置
+
+HomeBug 支持定时发送库存提醒邮件，使用 Cloudflare Pages 内置的 Cron Triggers。
+
+### 快速配置（3 步完成）
+
+#### 1. 生成密钥
+
+```bash
+openssl rand -hex 32
+```
+
+#### 2. 配置环境变量
+
+在 Cloudflare Dashboard 的 Pages 项目中添加：
+
+```
+CRON_SECRET = <你生成的密钥>
+```
+
+#### 3. 部署项目
+
+```bash
+npm run deploy
+```
+
+✅ **完成！** 每天 UTC 1:00（北京时间 9:00）自动执行。
+
+📖 **详细配置指南**：[docs/CRON_PAGES_SETUP.md](./docs/CRON_PAGES_SETUP.md)
+
+### 自定义执行时间
+
+编辑 `wrangler.toml`：
+
+```toml
+[triggers]
+crons = ["0 1 * * *"]  # 每天 UTC 1:00（北京时间 9:00）
+```
+
+常用时间：
+
+- `0 1 * * *` - 每天上午 9:00（北京时间）
+- `0 9 * * *` - 每天下午 5:00（北京时间）
+- `0 */6 * * *` - 每 6 小时一次
+
+---
+
 ## 📜 开发脚本
 
 ```bash
@@ -273,6 +322,7 @@ npm run lint             # ESLint 检查
 | [docs/DATABASE.md](./docs/DATABASE.md)                         | 数据库表设计，字段说明                    |
 | [docs/UI_DESIGN.md](./docs/UI_DESIGN.md)                       | UI 设计规范，色彩系统，组件规范           |
 | [docs/AI_INTEGRATION.md](./docs/AI_INTEGRATION.md)             | **AI 功能集成文档，配置指南**             |
+| [docs/AI_EMAIL_TIPS.md](./docs/AI_EMAIL_TIPS.md) 🎭            | **AI 智能邮件文案功能（幽默提示）**       |
 | [docs/OPENCLAW_INTEGRATION.md](./docs/OPENCLAW_INTEGRATION.md) | **OpenClaw 集成指南（自然语言管理库存）** |
 | [国内AI配置指南.md](./国内AI配置指南.md) 🔥                    | **国内 AI 厂商快速配置指南（推荐）**      |
 | [docs/CHINA_AI_PROVIDERS.md](./docs/CHINA_AI_PROVIDERS.md)     | **国内 AI 厂商完整配置文档**              |
