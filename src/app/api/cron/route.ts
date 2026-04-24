@@ -292,8 +292,6 @@ function formatExpiryHtml(item: ReminderItemView): string {
 
   const isExpired = daysLeft < 0;
   const statusColor = isExpired ? "#dc2626" : "#f59e0b";
-  const statusBg = isExpired ? "#fee2e2" : "#fef3c7";
-  const statusIcon = isExpired ? "❌" : "⏰";
 
   const dayText =
     item.daysLeft === null
@@ -305,35 +303,26 @@ function formatExpiryHtml(item: ReminderItemView): string {
           : `剩余 ${daysLeft} 天`;
 
   const aiTipHtml = item.aiTip
-    ? `<div style="margin-top: 8px; padding: 8px 10px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 3px solid #94a3b8; border-radius: 6px;">
-         <div style="display: flex; align-items: flex-start; gap: 6px;">
-           <span style="font-size: 14px; line-height: 1.4;">💡</span>
-           <span style="font-size: 13px; line-height: 1.5; color: #475569; font-weight: 500;">${escapeHtml(item.aiTip)}</span>
-         </div>
+    ? `<div style="margin-top: 6px; padding: 6px 0; color: #64748b; font-size: 13px; line-height: 1.4;">
+         ${escapeHtml(item.aiTip)}
        </div>`
     : "";
 
   return `
-    <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04); transition: all 0.2s;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px;">
-        <div style="flex: 1; min-width: 0;">
-          <h4 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            ${escapeHtml(displayName)}
-          </h4>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: ${statusBg}; color: ${statusColor}; border-radius: 6px; font-size: 12px; font-weight: 700;">
-              <span>${statusIcon}</span>
-              <span>${escapeHtml(dayText)}</span>
-            </span>
-            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #64748b; font-weight: 600;">
-              <span>📦</span>
-              <span>${item.quantity} ${escapeHtml(item.unit)}</span>
-            </span>
-          </div>
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+        <div style="font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+          ${escapeHtml(displayName)}
         </div>
-      </div>
-      ${aiTipHtml}
-    </div>
+        <div style="font-size: 13px; color: ${statusColor}; margin-bottom: 2px;">
+          ${escapeHtml(dayText)}
+        </div>
+        <div style="font-size: 13px; color: #94a3b8;">
+          库存 ${item.quantity} ${escapeHtml(item.unit)}
+        </div>
+        ${aiTipHtml}
+      </td>
+    </tr>
   `.trim();
 }
 
@@ -344,40 +333,29 @@ function formatStockHtml(item: ReminderItemView): string {
       ? "已售罄"
       : `仅剩 ${item.quantity} ${escapeHtml(item.unit)}`;
 
-  const stockIcon = item.quantity === 0 ? "🚫" : "📉";
   const stockColor = item.quantity === 0 ? "#dc2626" : "#0284c7";
-  const stockBg = item.quantity === 0 ? "#fee2e2" : "#dbeafe";
 
   const aiTipHtml = item.aiTip
-    ? `<div style="margin-top: 8px; padding: 8px 10px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 3px solid #94a3b8; border-radius: 6px;">
-         <div style="display: flex; align-items: flex-start; gap: 6px;">
-           <span style="font-size: 14px; line-height: 1.4;">💡</span>
-           <span style="font-size: 13px; line-height: 1.5; color: #475569; font-weight: 500;">${escapeHtml(item.aiTip)}</span>
-         </div>
+    ? `<div style="margin-top: 6px; padding: 6px 0; color: #64748b; font-size: 13px; line-height: 1.4;">
+         ${escapeHtml(item.aiTip)}
        </div>`
     : "";
 
   return `
-    <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04); transition: all 0.2s;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px;">
-        <div style="flex: 1; min-width: 0;">
-          <h4 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            ${escapeHtml(displayName)}
-          </h4>
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: ${stockBg}; color: ${stockColor}; border-radius: 6px; font-size: 12px; font-weight: 700;">
-              <span>${stockIcon}</span>
-              <span>${escapeHtml(stockText)}</span>
-            </span>
-            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #64748b; font-weight: 600;">
-              <span>🛒</span>
-              <span>需要补货</span>
-            </span>
-          </div>
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+        <div style="font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+          ${escapeHtml(displayName)}
         </div>
-      </div>
-      ${aiTipHtml}
-    </div>
+        <div style="font-size: 13px; color: ${stockColor}; margin-bottom: 2px;">
+          ${escapeHtml(stockText)}
+        </div>
+        <div style="font-size: 13px; color: #94a3b8;">
+          需要补货
+        </div>
+        ${aiTipHtml}
+      </td>
+    </tr>
   `.trim();
 }
 
@@ -469,16 +447,6 @@ function toHtmlSummary(input: {
     input.expiringItems.length +
     input.lowStockItems.length;
 
-  const funnyFooterTexts = [
-    "清理库存，开启清爽一天",
-    "别让食物们白白牺牲",
-    "冰箱不是时光机",
-    "库存管理小能手",
-    "今天不处理，明天就要扔",
-  ];
-  const randomFooter =
-    funnyFooterTexts[Math.floor(Math.random() * funnyFooterTexts.length)];
-
   return `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -487,120 +455,141 @@ function toHtmlSummary(input: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${input.appName} 库存提醒</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background-color: #f5f5f5;">
   
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    
-    <!-- 头部卡片 -->
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0; padding: 24px 20px; text-align: center; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
-      <div style="font-size: 48px; margin-bottom: 8px;">🐛</div>
-      <h1 style="margin: 0 0 6px 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">
-        ${input.appName}
-      </h1>
-      <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 14px; font-weight: 500;">
-        ${new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
-      </p>
-      <div style="margin-top: 16px; display: inline-block; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); padding: 8px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.3);">
-        <span style="color: #ffffff; font-size: 15px; font-weight: 600;">📊 ${totalCount} 项提示</span>
-      </div>
-    </div>
-    
-    <!-- 主内容卡片 -->
-    <div style="background: #ffffff; border-radius: 0 0 16px 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
-      
-      <div style="padding: 20px 16px;">
-        
-        ${
-          input.expiredItems.length > 0
-            ? `
-        <div style="margin-bottom: ${input.expiringItems.length > 0 || input.lowStockItems.length > 0 ? "24px" : "0"};">
-          <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #dc2626;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 20px;">⚠️</span>
-                <h2 style="margin: 0; font-size: 17px; font-weight: 700; color: #991b1b;">已过期</h2>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+          
+          <!-- 头部 -->
+          <tr>
+            <td style="background-color: #6366f1; padding: 30px 20px; text-align: center;">
+              <div style="font-size: 40px; margin-bottom: 10px;">🐛</div>
+              <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 600;">
+                ${input.appName}
+              </h1>
+              <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 13px;">
+                ${new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- 统计摘要 -->
+          <tr>
+            <td style="padding: 20px; background-color: #fafafa; border-bottom: 1px solid #e5e7eb;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  ${
+                    input.expiredItems.length > 0
+                      ? `<td style="text-align: center; padding: 10px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #dc2626;">${input.expiredItems.length}</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">已过期</div>
+                  </td>`
+                      : ""
+                  }
+                  ${
+                    input.expiringItems.length > 0
+                      ? `<td style="text-align: center; padding: 10px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">${input.expiringItems.length}</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">即将过期</div>
+                  </td>`
+                      : ""
+                  }
+                  ${
+                    input.lowStockItems.length > 0
+                      ? `<td style="text-align: center; padding: 10px;">
+                    <div style="font-size: 24px; font-weight: 700; color: #0284c7;">${input.lowStockItems.length}</div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">库存不足</div>
+                  </td>`
+                      : ""
+                  }
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- 主内容 -->
+          <tr>
+            <td style="padding: 20px;">
+              
+              ${
+                input.expiredItems.length > 0
+                  ? `
+              <div style="margin-bottom: ${input.expiringItems.length > 0 || input.lowStockItems.length > 0 ? "30px" : "0"};">
+                <div style="padding: 10px 12px; background-color: #fef2f2; border-left: 3px solid #dc2626; margin-bottom: 12px;">
+                  <span style="font-size: 15px; font-weight: 600; color: #991b1b;">⚠️ 已过期 (${input.expiredItems.length})</span>
+                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  ${renderExpired}
+                </table>
+                ${input.expiredItems.length > 20 ? `<div style="margin-top: 10px; text-align: center; color: #9ca3af; font-size: 12px;">还有 ${input.expiredItems.length - 20} 项未显示</div>` : ""}
               </div>
-              <span style="background: #dc2626; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 700;">${input.expiredItems.length}</span>
-            </div>
-          </div>
-          <div style="display: grid; gap: 8px;">${renderExpired}</div>
-          ${input.expiredItems.length > 20 ? `<div style="margin-top: 12px; text-align: center; padding: 8px; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 13px;">还有 ${input.expiredItems.length - 20} 项未显示</div>` : ""}
-        </div>
-        `
-            : ""
-        }
-        
-        ${
-          input.expiringItems.length > 0
-            ? `
-        <div style="margin-bottom: ${input.lowStockItems.length > 0 ? "24px" : "0"};">
-          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #f59e0b;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 20px;">⏰</span>
-                <h2 style="margin: 0; font-size: 17px; font-weight: 700; color: #92400e;">即将过期</h2>
+              `
+                  : ""
+              }
+              
+              ${
+                input.expiringItems.length > 0
+                  ? `
+              <div style="margin-bottom: ${input.lowStockItems.length > 0 ? "30px" : "0"};">
+                <div style="padding: 10px 12px; background-color: #fffbeb; border-left: 3px solid #f59e0b; margin-bottom: 12px;">
+                  <span style="font-size: 15px; font-weight: 600; color: #92400e;">⏰ 即将过期 (${input.expiringItems.length})</span>
+                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  ${renderExpiring}
+                </table>
+                ${input.expiringItems.length > 20 ? `<div style="margin-top: 10px; text-align: center; color: #9ca3af; font-size: 12px;">还有 ${input.expiringItems.length - 20} 项未显示</div>` : ""}
               </div>
-              <span style="background: #f59e0b; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 700;">${input.expiringItems.length}</span>
-            </div>
-          </div>
-          <div style="display: grid; gap: 8px;">${renderExpiring}</div>
-          ${input.expiringItems.length > 20 ? `<div style="margin-top: 12px; text-align: center; padding: 8px; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 13px;">还有 ${input.expiringItems.length - 20} 项未显示</div>` : ""}
-        </div>
-        `
-            : ""
-        }
-        
-        ${
-          input.lowStockItems.length > 0
-            ? `
-        <div>
-          <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #0284c7;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 20px;">📦</span>
-                <h2 style="margin: 0; font-size: 17px; font-weight: 700; color: #075985;">库存不足</h2>
+              `
+                  : ""
+              }
+              
+              ${
+                input.lowStockItems.length > 0
+                  ? `
+              <div>
+                <div style="padding: 10px 12px; background-color: #eff6ff; border-left: 3px solid #0284c7; margin-bottom: 12px;">
+                  <span style="font-size: 15px; font-weight: 600; color: #075985;">📦 库存不足 (${input.lowStockItems.length})</span>
+                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  ${renderLowStock}
+                </table>
+                ${input.lowStockItems.length > 20 ? `<div style="margin-top: 10px; text-align: center; color: #9ca3af; font-size: 12px;">还有 ${input.lowStockItems.length - 20} 项未显示</div>` : ""}
               </div>
-              <span style="background: #0284c7; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 700;">${input.lowStockItems.length}</span>
-            </div>
-          </div>
-          <div style="display: grid; gap: 8px;">${renderLowStock}</div>
-          ${input.lowStockItems.length > 20 ? `<div style="margin-top: 12px; text-align: center; padding: 8px; background: #f8fafc; border-radius: 8px; color: #64748b; font-size: 13px;">还有 ${input.lowStockItems.length - 20} 项未显示</div>` : ""}
-        </div>
-        `
-            : ""
-        }
-        
-      </div>
-      
-      <!-- 底部操作区 -->
-      <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 20px; border-top: 2px dashed #e2e8f0;">
-        <div style="text-align: center; margin-bottom: 16px;">
-          <div style="display: inline-block; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 10px 20px; border-radius: 20px; border: 2px solid #fbbf24;">
-            <span style="font-size: 16px;">💡</span>
-            <span style="color: #92400e; font-size: 14px; font-weight: 600; margin-left: 6px;">${randomFooter}</span>
-          </div>
-        </div>
-        ${
-          input.dashboardUrl
-            ? `<div style="text-align: center;">
-          <a href="${input.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-size: 15px; font-weight: 600; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); transition: all 0.3s;">
-            查看详情
-          </a>
-        </div>`
-            : ""
-        }
-      </div>
-      
-    </div>
-    
-    <!-- 页脚 -->
-    <div style="margin-top: 16px; text-align: center; padding: 12px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2);">
-      <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 12px; font-weight: 500;">
-        🤖 您的忠诚属下：HomeBug囤囤鼠敬上🙇‍♀️ · 请勿直接回复
-      </p>
-    </div>
-    
-  </div>
+              `
+                  : ""
+              }
+              
+            </td>
+          </tr>
+          
+          <!-- 底部按钮 -->
+          ${
+            input.dashboardUrl
+              ? `<tr>
+            <td style="padding: 20px; text-align: center; background-color: #fafafa; border-top: 1px solid #e5e7eb;">
+              <a href="${input.dashboardUrl}" style="display: inline-block; background-color: #6366f1; color: #ffffff; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600;">
+                查看详情
+              </a>
+            </td>
+          </tr>`
+              : ""
+          }
+          
+          <!-- 页脚 -->
+          <tr>
+            <td style="padding: 16px; text-align: center; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
+                  🤖 您忠诚的小弟囤囤鼠敬上 🙇‍♀️ · 请勿直接回复
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
   
 </body>
 </html>`.trim();
