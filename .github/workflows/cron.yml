@@ -1,0 +1,38 @@
+name: Cron Job - SendMail
+
+on:
+  schedule:
+    # 每天 UTC 1:00 执行（北京时间 9:00）
+    - cron: "15 11 * * 5"
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  trigger-cron:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 触发库存提醒
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PAGES_URL: ${{ secrets.PAGES_URL }}
+        run: |
+          echo "开始触发库存提醒任务..."
+
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            "$PAGES_URL/api/cron?auto=1")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ 任务执行成功"
+          else
+            echo "❌ 任务执行失败"
+            exit 1
+          fi
