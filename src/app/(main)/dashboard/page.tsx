@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, Input, Spinner } from "@heroui/react";
+import { Avatar, Button, Card, Input, Spinner } from "@heroui/react";
 import {
   AlertTriangle,
   Clock,
@@ -181,6 +181,15 @@ function providerLabel(provider: string) {
   return map[provider] ?? provider;
 }
 
+function getQQAvatar(email: string): string | null {
+  const match = email.match(/^(\d+)@qq\.com$/i);
+  if (match) {
+    const qqNumber = match[1];
+    return `https://q1.qlogo.cn/g?b=qq&nk=${qqNumber}&s=100`;
+  }
+  return null;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -190,6 +199,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{
     id: string;
     username: string;
+    email: string;
     role: string;
   } | null>(null);
 
@@ -224,7 +234,12 @@ export default function DashboardPage() {
 
         if (authRes.ok) {
           const authData = (await authRes.json()) as {
-            data?: { id: string; username: string; role: string };
+            data?: {
+              id: string;
+              username: string;
+              email: string;
+              role: string;
+            };
           };
           if (authData.data) setUser(authData.data);
         }
@@ -373,13 +388,28 @@ export default function DashboardPage() {
       <section className="mx-auto max-w-6xl space-y-8">
         {/* 页头 */}
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
-              你好, {user?.username || "admin"} 👋
-            </h1>
-            <p className="mt-1.5 text-[14px] text-zinc-500 dark:text-zinc-400 sm:text-[15px]">
-              全局库存概览与补货预警，实时守护属鼠的物资。
-            </p>
+          <div className="flex items-center gap-3">
+            {user?.email && (
+              <Avatar size="md">
+                {getQQAvatar(user.email) ? (
+                  <Avatar.Image
+                    alt={user.username}
+                    src={getQQAvatar(user.email)!}
+                  />
+                ) : null}
+                <Avatar.Fallback>
+                  {user.username.slice(0, 1).toUpperCase()}
+                </Avatar.Fallback>
+              </Avatar>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                你好, {user?.username || "admin"} 👋
+              </h1>
+              <p className="mt-1.5 text-[14px] text-zinc-500 dark:text-zinc-400 sm:text-[15px]">
+                全局囤货概览与补货预警，实时守护属鼠的物资。
+              </p>
+            </div>
           </div>
           <Button
             onPress={() => router.push("/items")}
