@@ -815,7 +815,7 @@ async function runInventoryReminderJob() {
     const aiConfig = await getAiConfig(db);
 
     if (aiConfig) {
-      const titlePrompt = `你是一个幽默风趣的家庭管家助手"囤囤鼠"。请为库存提醒邮件生成一个幽默、有梗、吸引人的标题。
+      const titlePrompt = `你是一个幽默风趣抽象的家庭管家助手"囤囤鼠"。请为库存提醒邮件生成一个幽默、有梗、吸引人的标题。
 
 当前库存情况：${summarySubject.join("，")}
 
@@ -830,7 +830,7 @@ async function runInventoryReminderJob() {
 - 报～前方囤囤鼠传来急报～
 - 🚨 你的冰箱发来了求救信号
 - 警告！有东西要造反了
-- 囤囤鼠紧急播报：库存告急！
+- 囤囤鼠请求支援：库存告急！
 - 你的食物们在召唤你
 - 快醒醒！有些东西等不及了
 
