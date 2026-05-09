@@ -390,22 +390,25 @@ export default function DashboardPage() {
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="flex items-center gap-3">
             {user?.email && (
-              <Avatar size="md">
-                {getQQAvatar(user.email) ? (
-                  <Avatar.Image
-                    alt={user.username}
-                    src={getQQAvatar(user.email)!}
-                  />
-                ) : null}
-                <Avatar.Fallback>
-                  {user.username.slice(0, 1).toUpperCase()}
-                </Avatar.Fallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar size="lg">
+                  {getQQAvatar(user.email) ? (
+                    <Avatar.Image
+                      alt={user.username}
+                      src={getQQAvatar(user.email)!}
+                    />
+                  ) : null}
+                  <Avatar.Fallback>
+                    {user.username.slice(0, 1).toUpperCase()}
+                  </Avatar.Fallback>
+                </Avatar>
+                <span className="absolute right-0 bottom-0 size-3 rounded-full bg-green-500 ring-2 ring-background" />
+              </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+              <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
                 你好, {user?.username || "admin"} 👋
-              </h1>
+              </h2>
               <p className="mt-1.5 text-[14px] text-zinc-500 dark:text-zinc-400 sm:text-[15px]">
                 全局囤货概览与补货预警，实时守护属鼠的物资。
               </p>
