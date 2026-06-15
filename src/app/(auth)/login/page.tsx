@@ -80,27 +80,31 @@ function LoginForm() {
   }
 
   return (
-    <main className="grid min-h-screen grid-cols-1 lg:grid-cols-2 overflow-hidden bg-white text-zinc-900 dark:bg-black dark:text-zinc-100">
-      {/* PC 端动画部分，移动端隐藏 */}
-      <div className="hidden lg:block relative h-full w-full overflow-hidden">
-        <InteractiveCharacters
-          focusMode={focusedField}
-          showPassword={showPassword}
-          passwordLen={passwordLen}
-        />
+    <main className="grid h-[100dvh] grid-cols-1 lg:grid-cols-2 overflow-hidden bg-white text-zinc-900 dark:bg-black dark:text-zinc-100">
+      {/* PC 端动画部分 - 绝对定位撑满 */}
+      <div className="hidden lg:flex relative h-full w-full items-stretch overflow-hidden">
+        <div className="absolute inset-0">
+          <InteractiveCharacters
+            focusMode={focusedField}
+            showPassword={showPassword}
+            passwordLen={passwordLen}
+          />
+        </div>
       </div>
 
       {/* 登录表单部分 */}
-      <div className="relative flex h-full items-center justify-center p-6 bg-white dark:bg-black">
-        <div className="absolute inset-0 z-0 pointer-events-none flex justify-center">
+      <div className="relative flex h-full items-center justify-center px-6 sm:px-10 bg-white dark:bg-black">
+        {/* 背景装饰 */}
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] [background-size:64px_64px] dark:bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,#000_20%,transparent_100%)]" />
-          <div className="absolute -top-22 h-[400px] w-[800px] bg-gradient-to-b from-zinc-200/50 to-transparent opacity-60 blur-3xl dark:from-indigo-900/20" />
-          <div className="absolute top-[20%] h-[300px] w-[500px] rounded-full bg-zinc-100/50 blur-[100px] dark:bg-cyan-900/10" />
+          <div className="absolute left-1/2 -translate-x-1/2 -top-22 h-[400px] w-[800px] bg-gradient-to-b from-zinc-200/50 to-transparent opacity-60 blur-3xl dark:from-indigo-900/20" />
+          <div className="absolute left-1/2 -translate-x-1/2 top-[20%] h-[300px] w-[500px] rounded-full bg-zinc-100/50 blur-[100px] dark:bg-cyan-900/10" />
         </div>
 
-        <div className="relative z-10 w-full max-w-[420px] px-6">
-          <div className="mb-10 flex flex-col items-center text-center">
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-200 bg-white/50 shadow-sm backdrop-blur-xl dark:border-zinc-800 dark:bg-black/50">
+        <div className="relative z-10 w-full max-w-[380px]">
+          {/* Logo & 标题 */}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white/50 shadow-sm backdrop-blur-xl dark:border-zinc-800 dark:bg-black/50">
               <Image
                 src="/logo.svg"
                 alt="HomeBug Logo"
@@ -113,11 +117,12 @@ function LoginForm() {
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
               HomeBug
             </h1>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
               囤囤鼠的日常
             </p>
           </div>
 
+          {/* 表单卡片 */}
           <Card className="w-full p-5 dark:border-zinc-800/70 dark:bg-black/60">
             <Form
               onSubmit={onSubmit}
@@ -174,6 +179,7 @@ function LoginForm() {
                       <button
                         className="absolute right-0 top-0 h-full px-3 focus:outline-none flex items-center justify-center"
                         type="button"
+                        aria-label={showPassword ? "隐藏密码" : "显示密码"}
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
@@ -199,7 +205,7 @@ function LoginForm() {
                 <Button
                   isPending={isSubmitting}
                   type="submit"
-                  className="mt-4 h-10 w-full bg-zinc-900 text-[15px] font-medium text-white shadow-md transition-all hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                  className="mt-3 h-10 w-full rounded-xl bg-zinc-900 text-[15px] font-medium text-white shadow-md transition-all hover:bg-black active:scale-[0.98] dark:bg-white dark:text-black dark:hover:bg-zinc-200"
                 >
                   {({ isPending }) => (
                     <>

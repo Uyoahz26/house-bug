@@ -345,8 +345,8 @@ export function InteractiveCharacters({
         }}
       />
 
-      <div className="relative z-20 flex h-[500px] w-full items-end justify-center">
-        <div className="relative h-[400px] w-[550px] scale-75 xl:scale-100 origin-bottom">
+      <div className="relative z-20 flex w-full flex-1 items-end justify-center pb-[15%]">
+        <div className="relative h-[400px] w-[550px] scale-[0.6] sm:scale-75 xl:scale-100 origin-bottom">
           {/* Purple Char */}
           <div
             ref={purpleRef}
